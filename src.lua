@@ -18,52 +18,52 @@ util.protectGui(library.UI)
 			Default Options
 -----------------------------------]]--
 do -- Default Creation Params
-	util.def_window = {
+	library.def_window = {
 		Text = "Window",
 		Theme_Overrides = {},
 		--
 		Position = V2(500, 500),
 		Position_Callback = function(n)end, -- Fires every window_f position change
 	}
-	util.def_page = {
+	library.def_page = {
 		Text = "Page"
 	}
-	util.def_button = {
+	library.def_button = {
 		Text = "Button",
 		Key = false,
 		Callback = function()end,
 		KCallback = function(newkey)end
 	}
-	util.def_toggle = {
+	library.def_toggle = {
 		Text = "Toggle",
 		Default = false,
 		Key = false,
 		Callback = function(state)end,
 		KCallback = function(newkey)end
 	}
-	util.def_picker = {
+	library.def_picker = {
 		Text = "Picker",
 		Default = {RGB(255, 0, 255), 1},
 		Callback = function(color)end
 	}
-	util.def_slider = {
+	library.def_slider = {
 		Text = "Slider",
 		Default = 50,
 		Min = 0, Max = 100, Decimals = 0,
 		Suffix = "",
 		Callback = function(value)end
 	}
-	util.def_dropdown = {
+	library.def_dropdown = {
 		Text = "Dropdown",
 		Options = {},
 		Callback = function(option)end
 	}
-	util.def_chipset = {
+	library.def_chipset = {
 		Text = "Dropdown",
 		Options = {},
 		Callback = function(Options)end
 	}
-	util.def_label = {
+	library.def_label = {
 		Text = "Label"
 	}
 end
@@ -71,8 +71,8 @@ end
 --[[-------------------------
 			Icons
 -------------------------]]--
-util.diagonalSizeId     = 'rbxassetid://9063724353'
-util.horizontalSizeId   = 'rbxassetid://8943647369'
+library.diagonalSizeId     = 'rbxassetid://9063724353'
+library.horizontalSizeId   = 'rbxassetid://8943647369'
 
 --[[-------------------------
 			Z INDEX
@@ -86,12 +86,12 @@ util.horizontalSizeId   = 'rbxassetid://8943647369'
 			Library
 ---------------------------]]--
 function library.New(options)
-	local window_i = util.merge(util.def_window, options)
+	local window_i = util.merge(library.def_window, options)
+	local window_f = {}
 
-	local window_f = {active = true}
-	--
-
-	-- Connection Management
+	--[[---------------------------
+			  Connections
+	---------------------------]]--
 	do
 		window_f.Connections = {}
 		--
@@ -107,27 +107,63 @@ function library.New(options)
 			end
 		end
 	end
-	--
+	-------------------------------
+
+	--[[---------------------------
+				Themes
+	---------------------------]]--
+	do
+        window_f.DefaultTheme = {
+			Dark_Background = RGB(10, 18, 38),
+            Dark_Border = RGB(10, 18, 38),
+			
+			Light_Background = RGB(14, 31, 66),
+            Light_Border = RGB(14, 31, 66),
+        
+            Light_Text = RGB(230, 230, 230),
+			Dark_Text = RGB(178, 178, 178),
+
+            Accent = RGB(205, 0, 255)
+        }
+		window_f.Theme = util.merge(window_f.DefaultTheme, window_i.Theme_Overrides)
+		window_f.ThemeUpdaters = {}
+
+		function window_f:NewThemeUpdater(element, properties)
+			self.ThemeUpdaters[element] = properties
+        end
+		function window_f:UpdateTheme()
+            for element, properties in next, self.ThemeUpdaters do
+				if not element then continue end
+
+				for property, theme_tag in next, properties do
+					element[property] = self.Theme[type(theme_tag) == "function" and theme_tag() or theme_tag] or element[property] or nil
+				end
+            end
+        end
+		function window_f:ResetTheme()
+            for i,o in next, self.Theme do
+                self.Theme[i] = self.DefaultTheme[i] or self.Theme[i] or nil
+            end
+    
+            self:UpdateTheme()
+        end
+	end
+	-------------------------------
 
 	local Window = util.create('Frame', {
 		Name = window_i.Text,
 		Parent = library.UI,
-		BackgroundColor3 = RGB(10, 18, 38),
-		BorderColor3 = RGB(10, 18, 38),
+		BackgroundColor3 = window_f.Theme.Dark_Background,
+		BorderColor3 = window_f.Theme.Dark_Border,
 		BorderSizePixel = 2,
 		Position = util.v2_u2(window_i.Position),
 		Size = U2(0, 220, 0, 350),
 		ZIndex = 0
 	})
-
-	function window_f:Close()
-		for _,c in next, self.Connections do
-			c:Disconnect()
-		end
-		library.UI:Destroy()
-		window_f.active = false
-		window_f.cursor.cursor:Destroy()
-	end
+	window_f:NewThemeUpdater(Window, {
+		BackgroundColor3 = "Dark_Background",
+		BorderColor3 = "Dark_Border"
+	})
 
 	local Pages = util.create('Folder', {
 		Name = "Pages",
@@ -137,9 +173,9 @@ function library.New(options)
 	local PageSelector = util.create('ScrollingFrame', {
 		Name = "PageSelector",
 		Parent = Window,
-		BackgroundColor3 = RGB(14, 31, 66),
-		BorderColor3 = RGB(10, 18, 38),
-		BorderSizePixel = 0,
+		BackgroundColor3 = window_f.Theme.Light_Background,
+		BorderColor3 = window_f.Theme.Dark_Border,
+		BorderSizePixel = 1,
 		Position = U2(0, 0, 0, 1),
 		Selectable = true,
 		Size = U2(1, 0, 0, 20),
@@ -148,6 +184,10 @@ function library.New(options)
 		ScrollBarThickness = 0,
 		ScrollingDirection = Enum.ScrollingDirection.X,
 		ZIndex = 0
+	})
+	window_f:NewThemeUpdater(PageSelector, {
+		BackgroundColor3 = "Light_Background",
+		BorderColor3 = "Dark_Border"
 	})
 	
 	local PageListLayout = util.create('UIListLayout', {
@@ -160,12 +200,30 @@ function library.New(options)
 	local TopBar = util.create('Frame', {
 		Name = "TopBar",
 		Parent = Window,
-		BackgroundColor3 = RGB(205, 0, 255),
+		BackgroundColor3 = window_f.Theme.Accent,
 		BorderSizePixel = 0,
 		Size = U2(1, 0, 0, 1),
 		ZIndex = 1
 	})
+	window_f:NewThemeUpdater(TopBar, {
+		BackgroundColor3 = "Accent"
+	})
 
+	--[[---------------------------
+			WINDOW FUNCTIONS
+	---------------------------]]--
+	window_f.Toggled = true
+	function window_f:Toggle()
+		self.Toggled = not self.Toggled
+		library.UI.Enabled = self.Toggled
+	end
+	function window_f:Close()
+		for _,c in next, self.Connections do
+			c:Disconnect()
+		end
+		library.UI:Destroy()
+		self.cursor.cursor:Destroy()
+	end
 	function window_f:hideAllPages(MUTEX)
 		window_f.currentPage = nil
 		for _,p in next, Pages:GetChildren() do
@@ -188,6 +246,14 @@ function library.New(options)
 		end
 	end
 	window_f:hideAllPages()
+
+	function window_f:GetPosition(position)
+		return V2(Window.AbsolutePosition.X, Window.AbsolutePosition.Y);
+	end
+	function window_f:SetPosition(position)
+		Window.Position = U2(0, position.X, 0, position.Y)
+		window_i.Position_Callback(position)
+	end
 	--
 
 	--[[-----------------------------------
@@ -198,7 +264,6 @@ function library.New(options)
 			return
 		end
 
-		offset = offset or U2(0,0,0,0)
 		Callback = Callback or function()end
 
 		local dragging = false;
@@ -208,7 +273,7 @@ function library.New(options)
 		local previousPos = V2(element.AbsolutePosition.X, element.AbsolutePosition.Y);
 
 		local C1; C1 = UIS.InputChanged:Connect(function(input)
-			if dragging and input.UserInputType == UIT.MouseMovement then
+			if window_f.Toggled and dragging and input.UserInputType == UIT.MouseMovement then
 				if dragTween then dragTween:Cancel() end
 
 				local nx, ny = ROUND(Mouse.X + previousOffset.X), ROUND(Mouse.Y + previousOffset.Y)
@@ -228,7 +293,7 @@ function library.New(options)
 		window_f:addRawConnection(C1)
 
 		local C2; C2 = UIS.InputBegan:Connect(function(input)
-			if input.UserInputType == MB1 and util.mouseIn(anchor) then
+			if window_f.Toggled and input.UserInputType == MB1 and util.mouseIn(anchor) then
 				previousOffset = V2(element.AbsolutePosition.X, element.AbsolutePosition.Y) - V2(Mouse.X, Mouse.Y)
 				dragging = true
 			end
@@ -247,13 +312,6 @@ function library.New(options)
 	window_f:makeDraggable(Window, PageSelector, window_i.Position_Callback)
 	---------------------------------------
 
-	function window_f:GetPosition(position)
-		return V2(Window.AbsolutePosition.X, Window.AbsolutePosition.Y);
-	end
-	function window_f:SetPosition(position)
-		Window.Position = U2(0, position.X, 0, position.Y)
-		window_i.Position_Callback(position)
-	end
 
 	--[[-----------------------------------
                 Custom Cursor
@@ -272,8 +330,8 @@ function library.New(options)
 		--
 		local Binded = false
 		local Cursor_Lock = function()
-			if not (window_f.active) then
-				window_f.cursor.cursor:Destroy()
+			if not (window_f.Toggled) then
+				window_f.cursor:hideCursor()
 				RS:UnbindFromRenderStep("CursorLock")
 			else
 				local c = window_f.cursor.cursor
@@ -335,26 +393,35 @@ function library.New(options)
 				Size = U2(0, 46, 0, 20),
 				Font = Enum.Font.Code,
 				Text = name,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = 20
 			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
+			})
 			
 			local Input = util.create('TextBox', {
 				Name = f.."Input",
 				Parent = Text,
-				BackgroundColor3 = RGB(14, 31, 66),
+				BackgroundColor3 = window_f.Theme.Light_Background,
 				BorderSizePixel = 0,
 				Position = U2(1, 0, 0.5, -8),
 				Size = U2(0, 86, 0, 16),
 				Font = Enum.Font.Code,
 				Text = "",
 				PlaceholderText = pholder,
-				TextColor3 = RGB(160, 160, 160),
+				TextColor3 = window_f.Theme.Light_Text,
+				PlaceholderColor3 = window_f.Theme.Dark_Text,
 				TextSize = 13,
 				ZIndex = 20
+			})
+			window_f:NewThemeUpdater(Input, {
+				BackgroundColor3 = "Light_Background",
+				TextColor3 = "Light_Text",
+				PlaceholderColor3 = "Dark_Text"
 			})
 		
 
@@ -392,12 +459,16 @@ function library.New(options)
 			self.PickerWin = util.create('Frame', {
 				Name = Name,
 				Parent = library.UI,
-				BackgroundColor3 = RGB(10, 18, 38),
-				BorderColor3 = RGB(10, 18, 38),
+				BackgroundColor3 = window_f.Theme.Dark_Background,
+				BorderColor3 = window_f.Theme.Dark_Border,
 				BorderSizePixel = 2,
 				Position = U2(1,1,1,1),
 				Size = U2(0, 146, 0, 230),
 				ZIndex = 20
+			})
+			window_f:NewThemeUpdater(self.PickerWin, {
+				BackgroundColor3 = "Dark_Background",
+				BorderColor3 = "Dark_Border"
 			})
 
 			self.TopBar = util.create('Frame', {
@@ -417,12 +488,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 10),
 				Font = Enum.Font.Code,
 				Text = Name,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				ZIndex = 20,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
+			})
+			window_f:NewThemeUpdater(self.TopBarTitle, {
+				TextColor3 = "Light_Text"
 			})
 
 			self.Connections = window_f:makeDraggable(self.PickerWin, self.TopBar)
@@ -430,10 +504,13 @@ function library.New(options)
 			self.Bar = util.create('Frame', {
 				Name = "Bar",
 				Parent = self.PickerWin,
-				BackgroundColor3 = RGB(205, 0, 255),
+				BackgroundColor3 = window_f.Theme.Accent,
 				BorderSizePixel = 0,
 				Size = U2(1, 0, 0, 1),
 				ZIndex = 20
+			})
+			window_f:NewThemeUpdater(self.Bar, {
+				BackgroundColor3 = "Accent"
 			})
 			
 			self.SVPicker = util.create('ImageLabel', {
@@ -577,31 +654,38 @@ function library.New(options)
 	
 			self.hsvDrag = false
 			window_f:addConnection("InputBegan", self.SVPicker, function(input)
+				if not window_f.Toggled then return end
 				if input.UserInputType ~= MB1 then return end
+
 				self.hsvDrag = true
 				self:lockOn()
 			end)
 			--
 			self.hueDrag = false
 			window_f:addConnection("InputBegan", self.HuePicker, function(input)
+				if not window_f.Toggled then return end
 				if input.UserInputType ~= MB1 then return end
+
 				self.hueDrag = true
 				self:lockOn()
 			end)
 			--
 			self.alphaDrag = false
 			window_f:addConnection("InputBegan", self.AlphaPicker, function(input)
+				if not window_f.Toggled then return end
 				if input.UserInputType ~= MB1 then return end
+
 				self.alphaDrag = true
 				self:lockOn()
 			end)
 			--
 			window_f:addRawConnection(UIS.InputEnded:Connect(function(input)
-				if input.UserInputType == MB1 then
-					self.hsvDrag = false
-					self.hueDrag = false
-					self.alphaDrag = false
-				end
+				if not window_f.Toggled then return end
+				if input.UserInputType ~= MB1 then return end
+
+				self.hsvDrag = false
+				self.hueDrag = false
+				self.alphaDrag = false
 			end))
 			--
 	
@@ -748,8 +832,8 @@ function library.New(options)
 	--[[-----------------------------------
                 Page Constructor
     -----------------------------------]]--
-	function window_f.NewPage(options)
-		local page_i = util.merge(util.def_page, options)
+	function window_f:NewPage(options)
+		local page_i = util.merge(library.def_page, options)
 		local page_f = {}
 
 		local Page = util.create('ScrollingFrame', {
@@ -780,7 +864,7 @@ function library.New(options)
 			Parent = PageSelector,
 			Active = true,
 			AutoButtonColor = false,
-			BackgroundColor3 = RGB(10, 18, 38),
+			BackgroundColor3 = window_f.Theme.Dark_Background,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Selectable = true,
@@ -788,10 +872,15 @@ function library.New(options)
 			Style = Enum.ButtonStyle.Custom,
 			Font = Enum.Font.Code,
 			Text = page_i.Text,
-			TextColor3 = RGB(230, 230, 230),
+			TextColor3 = window_f.Theme.Light_Text,
 			TextSize = 13,
 			ZIndex = 2
 		})
+		window_f:NewThemeUpdater(PageButton, {
+			TextColor3 = "Light_Text"
+		})
+
+
 		spawn(function()
 			WAIT(0.5) -- TextBounds not updating
 			PageButton.Size = util.scaleToTB(PageButton, 4)
@@ -800,11 +889,14 @@ function library.New(options)
 		local Bar = util.create('Frame', {
 			Name = "Bar",
 			Parent = PageButton,
-			BackgroundColor3 = RGB(205, 0, 255),
+			BackgroundColor3 = window_f.Theme.Accent,
 			BorderSizePixel = 0,
 			Size = U2(1, 0, 0, 2),
 			Visible = false,
 			ZIndex = 2
+		})
+		window_f:NewThemeUpdater(Bar, {
+			BackgroundColor3 = "Accent"
 		})
 
 		local Attach = util.create('ObjectValue', {
@@ -833,7 +925,7 @@ function library.New(options)
 		
 		-- BUTTON Constructor - Options
 		function page_f:NewButton(options)
-			local button_i = util.merge(util.def_button, options)
+			local button_i = util.merge(library.def_button, options)
 			local button_f = {}
 			--
 
@@ -853,12 +945,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
 				Text = button_i.Text,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				ZIndex = 2,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
+			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
 			})
 			
 			local Bind = util.create('TextLabel', {
@@ -869,12 +964,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
 				Text = "[NONE]",
-				TextColor3 = RGB(178, 178, 178),
+				TextColor3 = window_f.Theme.Dark_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Bind, {
+				TextColor3 = "Dark_Text"
 			})
 
 			local TextDetector = util.create('TextButton', {
@@ -990,7 +1088,7 @@ function library.New(options)
 
 		-- TOGGLE Constructor - Options
 		function page_f:NewToggle(options)
-			local toggle_i = util.merge(util.def_toggle, options)
+			local toggle_i = util.merge(library.def_toggle, options)
 			local toggle_f = {}
 			--
 
@@ -1005,11 +1103,14 @@ function library.New(options)
 			local ON = util.create('Frame', {
 				Name = "ON",
 				Parent = Toggle,
-				BackgroundColor3 = RGB(205, 0, 255),
+				BackgroundColor3 = window_f.Theme.Accent,
 				BorderSizePixel = 0,
 				Position = U2(0, 0, 0.5, -3),
 				Size = U2(0, 9, 0, 6),
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(ON, {
+				BackgroundColor3 = "Accent"
 			})
 			
 			local OFF = util.create('Frame', {
@@ -1039,12 +1140,15 @@ function library.New(options)
 				Size = U2(1, -25, 0, 6),
 				Font = Enum.Font.Code,
 				Text = toggle_i.Text,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
 			})
 			
 			local TextDetector = util.create('TextButton', {
@@ -1070,12 +1174,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
 				Text = "[NONE]",
-				TextColor3 = RGB(178, 178, 178),
+				TextColor3 = window_f.Theme.Dark_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Bind, {
+				TextColor3 = "Dark_Text"
 			})
 			
 			local BindDetector = util.create('TextButton', {
@@ -1190,7 +1297,7 @@ function library.New(options)
 
 		-- SLIDER Constructor - Options
 		function page_f:NewSlider(options)
-			local slider_i = util.merge(util.def_slider, options)
+			local slider_i = util.merge(library.def_slider, options)
 			local slider_f = {}
 			--
 
@@ -1221,10 +1328,13 @@ function library.New(options)
 			local Fill = util.create('Frame', {
 				Name = "Fill",
 				Parent = Bar,
-				BackgroundColor3 = RGB(205, 0, 255),
+				BackgroundColor3 = window_f.Theme.Accent,
 				BorderSizePixel = 0,
 				Size = U2(0, 100, 1, 0),
 				ZIndex = 3
+			})
+			window_f:NewThemeUpdater(Fill, {
+				BackgroundColor3 = "Accent"
 			})
 			
 			local Sub = util.create('Frame', {
@@ -1242,12 +1352,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
 				Text = slider_i.Text,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
 			})
 			
 			local Value = util.create('TextBox', {
@@ -1259,7 +1372,7 @@ function library.New(options)
 				Position = U2(0, 0, 0.5, -6),
 				Size = U2(1, -2, 0, 10),
 				Text = "",
-				TextColor3 = RGB(178, 178, 178),
+				TextColor3 = window_f.Theme.Dark_Text,
 				PlaceholderText = (slider_i.Min .. "-" .. slider_i.Max),
 				Font = Enum.Font.Code,
 				TextSize = 13,
@@ -1267,12 +1380,15 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Right,
 				ZIndex = 3
 			})
+			window_f:NewThemeUpdater(Value, {
+				TextColor3 = "Dark_Text"
+			})
 			--
 
 			window_f:addConnection("MouseEnter", Bar, function()
 				if (slider_f.dragging) then return end
 
-				window_f.cursor:showCursor(util.horizontalSizeId)
+				window_f.cursor:showCursor(library.horizontalSizeId)
 			end)
 
 			window_f:addConnection("MouseLeave", Bar, function()
@@ -1286,13 +1402,16 @@ function library.New(options)
 
 			slider_f.connection = function()end
 			window_f:addConnection("MouseButton1Down", Bar, function()
+				if not window_f.Toggled then
+					return
+				end
 				slider_f.dragging = true
 				RS:BindToRenderStep(slider_f.RS_ID, 1, slider_f.connection)
 			end)
 			window_f:addRawConnection(UIS.InputEnded:Connect(function(input)
 				if input.UserInputType == MB1 then
 					if util.mouseIn(Bar) then
-						window_f.cursor:showCursor(util.horizontalSizeId)
+						window_f.cursor:showCursor(library.horizontalSizeId)
 					else
 						window_f.cursor:hideCursor()
 					end
@@ -1392,7 +1511,7 @@ function library.New(options)
 
 		-- PICKER Constructor - Options
 		function page_f:NewPicker(options)
-			local picker_i = util.merge(util.def_picker, options)
+			local picker_i = util.merge(library.def_picker, options)
 			local picker_f = {}
 			--
 
@@ -1412,12 +1531,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
 				Text = picker_i.Text,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
 			})
 			
 			local Detector = util.create('TextButton', {
@@ -1509,7 +1631,7 @@ function library.New(options)
 
 		-- DROPDOWN Constructor - Options
 		function page_f:NewDropdown(options)
-			local dropdown_i = util.merge(util.def_dropdown, options)
+			local dropdown_i = util.merge(library.def_dropdown, options)
 			local dropdown_f = {}
 			--
 
@@ -1537,19 +1659,23 @@ function library.New(options)
 				ZIndex = 2,
 				Font = Enum.Font.Code,
 				Text = dropdown_i.Text,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
 			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
+			})
+			
 			
 			local Bar = util.create('TextButton', {
 				Name = "Bar",
 				Parent = Dropdown,
 				Active = true,
 				AutoButtonColor = false,
-				BackgroundColor3 = RGB(14, 31, 66),
+				BackgroundColor3 = window_f.Theme.Light_Background,
 				BorderSizePixel = 0,
 				Position = U2(0, 0, 0, 20),
 				Selectable = true,
@@ -1558,6 +1684,9 @@ function library.New(options)
 				Text = "",
 				TextSize = 14,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Bar, {
+				BackgroundColor3 = "Light_Background"
 			})
 			
 			local Current = util.create('TextLabel', {
@@ -1568,11 +1697,16 @@ function library.New(options)
 				Size = U2(1, -4, 1, 0),
 				Font = Enum.Font.Code,
 				Text = dropdown_i.Options[dropdown_i.Default] or "NONE",
-				TextColor3 = dropdown_i.Options[dropdown_i.Default] and RGB(230, 230, 230) or RGB(160, 160, 160),
+				TextColor3 = dropdown_i.Options[dropdown_i.Default] and window_f.Theme.Light_Text or window_f.Theme.Dark_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = 3
+			})
+			window_f:NewThemeUpdater(Current, {
+				TextColor3 = function()
+					return Current.Text == "NONE" and "Dark_Text" or "Light_Text"
+				end
 			})
 			
 			local Container = util.create('Frame', {
@@ -1598,24 +1732,24 @@ function library.New(options)
 					previous_option = Current.Text
 
 					Current.Text = "..."
-					Current.TextColor3 = RGB(160, 160, 160)
+					Current.TextColor3 = window_f.Theme.Dark_Text
 				else
 					Current.Text = previous_option
-					Current.TextColor3 = previous_option ~= "NONE" and RGB(230, 230, 230) or RGB(160, 160, 160)
+					Current.TextColor3 = previous_option ~= "NONE" and window_f.Theme.Light_Text or window_f.Theme.Dark_Text
 				end
 			end)
 
 			local function setOption(n)
 				if not n then
 					Current.Text = "NONE"
-					Current.TextColor3 = RGB(160, 160, 160)
+					Current.TextColor3 = window_f.Theme.Dark_Text
 
 					dropdown_i.Callback(nil)
 					return;
 				end
 
 				Current.Text = dropdown_i.Options[n]
-				Current.TextColor3 = RGB(230, 230, 230)
+				Current.TextColor3 = window_f.Theme.Light_Text
 
 				dropdown_i.Callback(Current.Text)
 			end
@@ -1634,7 +1768,7 @@ function library.New(options)
 					Parent = Container,
 					Active = true,
 					AutoButtonColor = false,
-					BackgroundColor3 = RGB(14, 31, 66),
+					BackgroundColor3 = window_f.Theme.Light_Background,
 					BorderSizePixel = 0,
 					Position = U2(0, 0, 0, 20),
 					Selectable = true,
@@ -1643,6 +1777,9 @@ function library.New(options)
 					Text = "",
 					TextSize = 14,
 					ZIndex = 10
+				})
+				window_f:NewThemeUpdater(Option, {
+					BackgroundColor3 = "Light_Background"
 				})
 				
 				local Option_Text = util.create('TextLabel', {
@@ -1653,11 +1790,14 @@ function library.New(options)
 					Size = U2(1, -4, 1, 0),
 					Font = Enum.Font.Code,
 					Text = o,
-					TextColor3 = RGB(230, 230, 230),
+					TextColor3 = window_f.Theme.Light_Text,
 					TextSize = 13,
 					TextTruncate = Enum.TextTruncate.AtEnd,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					ZIndex = 10
+				})
+				window_f:NewThemeUpdater(Option_Text, {
+					TextColor3 = "Light_Text"
 				})
 
 				window_f:addConnection("MouseButton1Click", Option, function()
@@ -1683,7 +1823,7 @@ function library.New(options)
 
 		-- CHIPSET
 		function page_f:NewChipset(options)
-			local chipset_i = util.merge(util.def_chipset, options)
+			local chipset_i = util.merge(library.def_chipset, options)
 			local chipset_f = {}
 			--
 
@@ -1711,11 +1851,14 @@ function library.New(options)
 				ZIndex = 2,
 				Font = Enum.Font.Code,
 				Text = chipset_i.Text,
-				TextColor3 = RGB(230, 230, 230),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
+			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
 			})
 			
 			local Bar = util.create('TextButton', {
@@ -1723,7 +1866,7 @@ function library.New(options)
 				Parent = Chipset,
 				Active = true,
 				AutoButtonColor = false,
-				BackgroundColor3 = RGB(14, 31, 66),
+				BackgroundColor3 = window_f.Theme.Light_Background,
 				BorderSizePixel = 0,
 				Position = U2(0, 0, 0, 20),
 				Selectable = true,
@@ -1732,6 +1875,9 @@ function library.New(options)
 				Text = "",
 				TextSize = 14,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Bar, {
+				BackgroundColor3 = "Light_Background"
 			})
 			
 			local Current = util.create('TextLabel', {
@@ -1742,11 +1888,16 @@ function library.New(options)
 				Size = U2(1, -4, 1, 0),
 				Font = Enum.Font.Code,
 				Text = "NONE",
-				TextColor3 = RGB(160, 160, 160),
+				TextColor3 = window_f.Theme.Dark_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = 3
+			})
+			window_f:NewThemeUpdater(Current, {
+				TextColor3 = function()
+					return Current.Text == "NONE" and "Dark_Text" or "Light_Text"
+				end
 			})
 			
 			local Container = util.create('Frame', {
@@ -1787,12 +1938,12 @@ function library.New(options)
 
 				if c == 0 then
 					Current.Text = "NONE"
-					Current.TextColor3 = RGB(160, 160, 160)
+					Current.TextColor3 = window_f.Theme.Dark_Text
 				else
 					s = s:sub(1, -3)
 
 					Current.Text = s
-					Current.TextColor3 = RGB(230, 230, 230)
+					Current.TextColor3 = window_f.Theme.Light_Text
 				end
 
 				if (doCallBack) then chipset_i.Callback(chipset_i.Options) end
@@ -1805,7 +1956,7 @@ function library.New(options)
 					Parent = Container,
 					Active = true,
 					AutoButtonColor = false,
-					BackgroundColor3 = RGB(14, 31, 66),
+					BackgroundColor3 = window_f.Theme.Light_Background,
 					BorderSizePixel = 0,
 					Position = U2(0, 0, 0, 20),
 					Selectable = true,
@@ -1814,6 +1965,9 @@ function library.New(options)
 					Text = "",
 					TextSize = 14,
 					ZIndex = 10
+				})
+				window_f:NewThemeUpdater(Option, {
+					BackgroundColor3 = "Light_Background"
 				})
 				
 				local Option_Text = util.create('TextLabel', {
@@ -1824,18 +1978,23 @@ function library.New(options)
 					Size = U2(1, -4, 1, 0),
 					Font = Enum.Font.Code,
 					Text = o,
-					TextColor3 = chipset_i.Options[o] and RGB(205, 0, 255) or RGB(230, 230, 230),
+					TextColor3 = chipset_i.Options[o] and window_f.Theme.Accent or window_f.Theme.Light_Text,
 					TextSize = 13,
 					TextTruncate = Enum.TextTruncate.AtEnd,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					ZIndex = 10
+				})
+				window_f:NewThemeUpdater(Option_Text, {
+					TextColor3 = function()
+						return chipset_i.Options[o] and "Accent" or "Light_Text"
+					end
 				})
 
 				window_f:addConnection("MouseButton1Click", Option, function()
 					local new = not chipset_i.Options[o]
 
 					chipset_i.Options[o] = new
-					Option_Text.TextColor3 = new and RGB(205, 0, 255) or RGB(230, 230, 230)
+					Option_Text.TextColor3 = new and window_f.Theme.Accent or window_f.Theme.Light_Text
 
 					updateOptionString(true)
 				end)
@@ -1853,7 +2012,7 @@ function library.New(options)
 
 		-- Label
 		function page_f:NewLabel(options)
-			local label_i = util.merge(util.def_label, options)
+			local label_i = util.merge(library.def_label, options)
 			local label_f = {}
 			--
 
@@ -1873,12 +2032,15 @@ function library.New(options)
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
 				Text = label_i.Text,
-				TextColor3 = RGB(255, 255, 255),
+				TextColor3 = window_f.Theme.Light_Text,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
+			})
+			window_f:NewThemeUpdater(Text, {
+				TextColor3 = "Light_Text"
 			})
 
 			--
@@ -1917,6 +2079,62 @@ function library.New(options)
 		return page_f
 	end
 
+	function window_f:NewThemeControlPage()
+		local ThemePage = self:NewPage({Text="Theme"})
+
+		ThemePage:NewButton({
+			Text = "Update Theme", 
+			Callback = function()
+				self:UpdateTheme()
+			end
+		})
+
+		ThemePage:NewPicker({Text="Accent", Default = {self.Theme.Accent, 1},
+			Callback = function(c, a)
+				self.Theme.Accent = c
+			end
+		})
+
+		ThemePage:NewPicker({Text="Dark Background", Default = {self.Theme.Dark_Background, 1},
+			Callback = function(c, a)
+				self.Theme.Dark_Background = c
+			end
+		})
+
+		ThemePage:NewPicker({Text="Dark Border", Default = {self.Theme.Dark_Border, 1},
+			Callback = function(c, a)
+				self.Theme.Dark_Border = c
+			end
+		})
+
+		ThemePage:NewPicker({Text="Light Background", Default = {self.Theme.Light_Background, 1},
+			Callback = function(c, a)
+				self.Theme.Light_Background = c
+			end
+		})
+
+		ThemePage:NewPicker({Text="Light Border", Default = {self.Theme.Light_Border, 1},
+			Callback = function(c, a)
+				self.Theme.Light_Border = c
+			end
+		})
+
+		ThemePage:NewPicker({Text="Light Text", Default = {self.Theme.Light_Text, 1},
+			Callback = function(c, a)
+				self.Theme.Light_Text = c
+			end
+		})
+
+		ThemePage:NewPicker({Text="Dark Text", Default = {self.Theme.Dark_Text, 1},
+			Callback = function(c, a)
+				self.Theme.Dark_Text = c
+			end
+		})
+
+		return ThemePage
+	end
+
+
 	--
 	return window_f
 end
@@ -1942,14 +2160,21 @@ if false then
             print(tostring(v))
         end
     })
-    local P = W.NewPage({Text="ESP"})
-    local P = W.NewPage({Text="Aimbot"})
+    local P = W:NewPage({Text="ESP"})
+    local P = W:NewPage({Text="Aimbot"})
 	
     P:NewButton({
         Text = "Close", 
         Key = Enum.KeyCode.X,
         Callback = function() print("bind pressed"); W:Close() end,
         KCallback = function(new) print("set bind to: " .. tostring(new)) end
+    })
+
+	P:NewButton({
+        Text = "Toggle Gui", 
+        Key = Enum.KeyCode.End,
+        Callback = function() W:Toggle() end,
+        KCallback = function(new) print("set toggle bind to: " .. tostring(new)) end
     })
 
     P:NewToggle({
@@ -1993,6 +2218,5 @@ if false then
     P:NewSeparator()
     P:NewLabel({Text = "Label"})
 
-    local P = W.NewPage({Text="Visuals"})
-    local P = W.NewPage({Text="Environnment"})
+    W:NewThemeControlPage()
 end
