@@ -1,21 +1,29 @@
 local library = {}
+
+--[[-----------------------------------
+			Libraries
+-----------------------------------]]--
 local util = loadstring(game:HttpGet("https://raw.githubusercontent.com/Blissful4992/Miscellaneous/main/util.lua"))()
 
 --
-library.UI = CoreGui:FindFirstChild("UI") or util.create('ScreenGui', {
+library.UI = util.create('ScreenGui', {
 	Name = "UI",
 	Parent = CoreGui,
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Global
 })
+util.protectGui(library.UI)
 
+--[[-----------------------------------
+			Default Options
+-----------------------------------]]--
 do -- Default Creation Params
 	util.def_window = {
 		Text = "Window",
 		Theme_Overrides = {},
 		--
 		Position = V2(500, 500),
-		Position_Callback = function(n)end, -- Fires every window position change
+		Position_Callback = function(n)end, -- Fires every window_f position change
 	}
 	util.def_page = {
 		Text = "Page"
@@ -60,10 +68,23 @@ do -- Default Creation Params
 	}
 end
 
+--[[-------------------------
+			Icons
+-------------------------]]--
 util.diagonalSizeId     = 'rbxassetid://9063724353'
 util.horizontalSizeId   = 'rbxassetid://8943647369'
 
---
+--[[-------------------------
+			Z INDEX
+- Main Window: 0
+	- Text: 1
+	- 
+
+-------------------------]]--
+
+--[[---------------------------
+			Library
+---------------------------]]--
 function library.New(options)
 	local window_i = util.merge(util.def_window, options)
 
@@ -80,34 +101,10 @@ function library.New(options)
 		--
 		function window_f:addConnection(t, o, f)
 			local signal = o[t]
-
 			if (signal) then
 				local c = signal:Connect(f)
 				self:addRawConnection(c)
 			end
-		end
-		--
-		function window_f:addHighlighter(ref, objs, description, callback)
-			self:addConnection("MouseEnter", ref, function()
-				for obj, prop in next, objs do
-					local s, e = pcall(function()
-						obj[prop] = RGB(255, 255, 255);
-					end)
-					if not s then warn(e) end
-				end
-
-				if (callback) then callback(true) end
-			end)
-			self:addConnection("MouseLeave", ref, function()
-				for obj, prop in next, objs do
-					local s, e = pcall(function()
-						obj[prop] = RGB(178, 178, 178);
-					end)
-					if not s then warn(e) end
-				end
-
-				if (callback) then callback(false) end
-			end)
 		end
 	end
 	--
@@ -119,19 +116,148 @@ function library.New(options)
 		BorderColor3 = RGB(10, 18, 38),
 		BorderSizePixel = 2,
 		Position = util.v2_u2(window_i.Position),
-		Size = U2(0, 220, 0, 350)
+		Size = U2(0, 220, 0, 350),
+		ZIndex = 0
 	})
 
 	function window_f:Close()
 		for _,c in next, self.Connections do
 			c:Disconnect()
 		end
-		Window:Destroy()
+		library.UI:Destroy()
 		window_f.active = false
 		window_f.cursor.cursor:Destroy()
 	end
 
-	-- Cursor Lib
+	local Pages = util.create('Folder', {
+		Name = "Pages",
+		Parent = Window
+	})
+	
+	local PageSelector = util.create('ScrollingFrame', {
+		Name = "PageSelector",
+		Parent = Window,
+		BackgroundColor3 = RGB(14, 31, 66),
+		BorderColor3 = RGB(10, 18, 38),
+		BorderSizePixel = 0,
+		Position = U2(0, 0, 0, 1),
+		Selectable = true,
+		Size = U2(1, 0, 0, 20),
+		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		CanvasSize = U2(1, 0, 0, 0),
+		ScrollBarThickness = 0,
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		ZIndex = 0
+	})
+	
+	local PageListLayout = util.create('UIListLayout', {
+		Parent = PageSelector,
+		Padding = U1(0, 4),
+		Name = "PageListLayout",
+		FillDirection = Enum.FillDirection.Horizontal
+	})
+
+	local TopBar = util.create('Frame', {
+		Name = "TopBar",
+		Parent = Window,
+		BackgroundColor3 = RGB(205, 0, 255),
+		BorderSizePixel = 0,
+		Size = U2(1, 0, 0, 1),
+		ZIndex = 1
+	})
+
+	function window_f:hideAllPages(MUTEX)
+		window_f.currentPage = nil
+		for _,p in next, Pages:GetChildren() do
+			if p:IsA("ScrollingFrame") then
+				local v = (p == MUTEX)
+				p.Visible = v
+				if v then
+					local root = p.Attach.Value
+					window_f.currentPage = root
+
+					root.BackgroundTransparency = 0
+					root.Bar.Visible = true
+				else
+					local root = p.Attach.Value
+
+					root.BackgroundTransparency = 1
+					root.Bar.Visible = false
+				end
+			end
+		end
+	end
+	window_f:hideAllPages()
+	--
+
+	--[[-----------------------------------
+                  Dragging
+    -----------------------------------]]--
+	function window_f:makeDraggable(element, anchor, Callback)
+		if not element or not anchor then
+			return
+		end
+
+		offset = offset or U2(0,0,0,0)
+		Callback = Callback or function()end
+
+		local dragging = false;
+		local previousOffset;
+
+		local dragTween = false;
+		local previousPos = V2(element.AbsolutePosition.X, element.AbsolutePosition.Y);
+
+		local C1; C1 = UIS.InputChanged:Connect(function(input)
+			if dragging and input.UserInputType == UIT.MouseMovement then
+				if dragTween then dragTween:Cancel() end
+
+				local nx, ny = ROUND(Mouse.X + previousOffset.X), ROUND(Mouse.Y + previousOffset.Y)
+
+				dragTween = TS:Create(element, TWEEN(0.04, ESS, EDO), {Position = U2(0, nx, 0, ny)})
+				dragTween:Play()
+
+				local newPos = V2(nx, ny)
+
+				if newPos ~= previousPos then
+					Callback(newPos)
+				end
+
+				previousPos = newPos
+			end
+		end)
+		window_f:addRawConnection(C1)
+
+		local C2; C2 = UIS.InputBegan:Connect(function(input)
+			if input.UserInputType == MB1 and util.mouseIn(anchor) then
+				previousOffset = V2(element.AbsolutePosition.X, element.AbsolutePosition.Y) - V2(Mouse.X, Mouse.Y)
+				dragging = true
+			end
+		end)
+		window_f:addRawConnection(C2)
+
+		local C3; C3 = UIS.InputEnded:Connect(function(input)
+			if input.UserInputType == MB1 then
+				dragging = false
+			end
+		end)
+		window_f:addRawConnection(C3)
+
+		return {C1, C2, C3}
+	end
+	window_f:makeDraggable(Window, PageSelector, window_i.Position_Callback)
+	---------------------------------------
+
+	function window_f:GetPosition(position)
+		return V2(Window.AbsolutePosition.X, Window.AbsolutePosition.Y);
+	end
+	function window_f:SetPosition(position)
+		Window.Position = U2(0, position.X, 0, position.Y)
+		window_i.Position_Callback(position)
+	end
+
+	--[[-----------------------------------
+                Custom Cursor
+    -----------------------------------]]--
 	do
 		window_f.cursor = {}
 		--
@@ -176,24 +302,29 @@ function library.New(options)
 			RS:UnbindFromRenderStep("CursorLock")
 		end
 	end
-	--
+	---------------------------------------
 
-	-- Colorpicker Lib
-	local g_picker = {}
-	do
-		g_picker.Callback = function(c, a) end
-		g_picker.Current = {
+	--[[-----------------------------------
+                Colorpicker Factory
+    -----------------------------------]]--
+	local picker_factory = {
+		Callback = function(color, alpha)end,
+		Current = {
 			Red = 255,
 			Green = 255,
 			Blue = 255,
-			Alpha = 255,
-			Hex = "#FFFFFF",
 
 			Hue = 0,
 			Sat = 0,
-			Val = 1
-		}
+			Val = 1,
 
+			Hex = "#FFFFFF",
+			
+			Alpha = 255
+		}
+	}
+	picker_factory.__index = picker_factory
+	do
 		local function createValueTB(name, pholder, parent, order, Callback)
 			local f = SUB(name, 1, 1)
 
@@ -202,13 +333,13 @@ function library.New(options)
 				Parent = parent,
 				BackgroundTransparency = 1,
 				Size = U2(0, 46, 0, 20),
-				ZIndex = 5,
 				Font = Enum.Font.Code,
 				Text = name,
 				TextColor3 = RGB(230, 230, 230),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
-				TextXAlignment = Enum.TextXAlignment.Left
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 20
 			})
 			
 			local Input = util.create('TextBox', {
@@ -218,12 +349,12 @@ function library.New(options)
 				BorderSizePixel = 0,
 				Position = U2(1, 0, 0.5, -8),
 				Size = U2(0, 86, 0, 16),
-				ZIndex = 5,
 				Font = Enum.Font.Code,
 				Text = "",
 				PlaceholderText = pholder,
 				TextColor3 = RGB(160, 160, 160),
-				TextSize = 13
+				TextSize = 13,
+				ZIndex = 20
 			})
 		
 
@@ -257,430 +388,366 @@ function library.New(options)
 			return Input
 		end
 
-		g_picker.GlobalCP = util.create('Frame', {
-			Name = "GlobalCP",
-			Parent = Window,
-			BackgroundColor3 = RGB(10, 18, 38),
-			BorderColor3 = RGB(10, 18, 38),
-			BorderSizePixel = 2,
-			Position = U2(1, 8, 0, 0),
-			Size = U2(0, 146, 0, 221),
-			Visible = false
-		})
-		
-		local Bar = util.create('Frame', {
-			Name = "Bar",
-			Parent = g_picker.GlobalCP,
-			BackgroundColor3 = RGB(205, 0, 255),
-			BorderSizePixel = 0,
-			Size = U2(1, 0, 0, 1)
-		})
-		
-		local SVPicker = util.create('ImageLabel', {
-			Name = "SVPicker",
-			Parent = g_picker.GlobalCP,
-			BackgroundColor3 = RGB(255, 255, 255),
-			BorderSizePixel = 0,
-			Position = U2(0, 7, 0, 11),
-			Size = U2(0, 100, 0, 100),
-			ZIndex = 2,
-			Image = "rbxassetid://4155801252"
-		})
-		
-		local Point = util.create('Frame', {
-			Name = "Point",
-			Parent = SVPicker,
-			BackgroundColor3 = RGB(255, 255, 255),
-			BorderColor3 = RGB(0, 0, 0),
-			Position = U2(0, 20, 0, 20),
-			Rotation = 45,
-			Size = U2(0, 2, 0, 2),
-			ZIndex = 6
-		})
+		function picker_factory:createUI(Name, Current, Callback)
+			self.PickerWin = util.create('Frame', {
+				Name = Name,
+				Parent = library.UI,
+				BackgroundColor3 = RGB(10, 18, 38),
+				BorderColor3 = RGB(10, 18, 38),
+				BorderSizePixel = 2,
+				Position = U2(1,1,1,1),
+				Size = U2(0, 146, 0, 230),
+				ZIndex = 20
+			})
 
-		local AlphaPicker = util.create('ImageLabel', {
-			Name = "AlphaPicker",
-			Parent = SVPicker,
-			BackgroundTransparency = 1,
-			BackgroundColor3 = RGB(255, 255, 255),
-			Position = U2(0, 124, 0, 0),
-			Size = U2(0, 8, 0, 100),
-			ZIndex = 3,
-			Image = "rbxassetid://9228941480"
-		})
-		
-		local AlphaPointer = util.create('ImageLabel', {
-			Name = "AlphaPointer",
-			Parent = AlphaPicker,
-			BackgroundColor3 = RGB(255, 255, 255),
-			BackgroundTransparency = 1,
-			Position = U2(0, -2, 0, 0),
-			Size = U2(0, 12, 0, 4),
-			ZIndex = 4,
-			Image = "rbxassetid://9233904690"
-		})
-		
-		local AlphaSpectrum = util.create('UIGradient', {
-			Name = "AlphaSpectrum",
-			Parent = AlphaPicker,
-			Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(255, 255, 255)), ColorSequenceKeypoint.new(1, RGB(255, 0, 4))}),
-			Rotation = 90,
-			Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(1, 0, 0)})
-		})
-		
-		local HuePicker = util.create('Frame', {
-			Name = "HuePicker",
-			Parent = SVPicker,
-			BorderSizePixel = 0,
-			BackgroundColor3 = RGB(255, 255, 255),
-			Position = U2(0, 108, 0, 0),
-			Size = U2(0, 8, 0, 100),
-			ZIndex = 3
-		})
-		
-		local HueSpectrum = util.create('UIGradient', {
-			Name = "HueSpectrum",
-			Parent = HuePicker,
-			Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(255, 0, 4)), ColorSequenceKeypoint.new(0.10000000149011612, RGB(255, 0, 200)), ColorSequenceKeypoint.new(0.20000000298023224, RGB(153, 0, 255)), ColorSequenceKeypoint.new(0.30000001192092896, RGB(0, 0, 255)), ColorSequenceKeypoint.new(0.4000000059604645, RGB(0, 149, 255)), ColorSequenceKeypoint.new(0.5, RGB(0, 255, 209)), ColorSequenceKeypoint.new(0.6000000238418579, RGB(0, 255, 55)), ColorSequenceKeypoint.new(0.699999988079071, RGB(98, 255, 0)), ColorSequenceKeypoint.new(0.800000011920929, RGB(251, 255, 0)), ColorSequenceKeypoint.new(0.8999999761581421, RGB(255, 106, 0)), ColorSequenceKeypoint.new(1, RGB(255, 0, 0))}),
-			Rotation = 270,
-			Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(1, 0, 0)})
-		})
-		
-		local HuePointer = util.create('ImageLabel', {
-			Name = "HuePointer",
-			Parent = HuePicker,
-			BackgroundTransparency = 1,
-			Position = U2(0, -2, 0, 0),
-			Size = U2(0, 12, 0, 4),
-			ZIndex = 6,
-			Image = "rbxassetid://9233904690"
-		})
-		
-		local Control = util.create('Frame', {
-			Name = "Control",
-			Parent = g_picker.GlobalCP,
-			BackgroundTransparency = 1,
-			Position = U2(0, 7, 0, 115)
-		})
-		
-		local Elements_List = util.create('UIListLayout', {
-			Parent = Control,
-			Name = "Elements_List",
-			SortOrder = Enum.SortOrder.Name
-		})
-		
-		--
-		local R_TB = createValueTB("Red", "0-255", Control, "a", function(input)
-			if g_picker.hsvDrag or g_picker.hueDrag or g_picker.alphaDrag then return end
+			self.TopBar = util.create('Frame', {
+				Name = "TopBar",
+				Parent = self.PickerWin,
+				BackgroundTransparency = 1,
+				Position = U2(0,0,0,0),
+				Size = U2(1, 0, 0, 18),
+				ZIndex = 20
+			})
 
-			g_picker.Current.Red = input
-			g_picker:Place()
-		end)
-		local G_TB = createValueTB("Green", "0-255", Control, "b", function(input)
-			if g_picker.hsvDrag or g_picker.hueDrag or g_picker.alphaDrag then return end
+			self.TopBarTitle = util.create('TextLabel', {
+				Name = "TopBarTitle",
+				Parent = self.PickerWin,
+				BackgroundTransparency = 1,
+				Position = U2(0, 6, 0, 6),
+				Size = U2(1, 0, 0, 10),
+				Font = Enum.Font.Code,
+				Text = Name,
+				TextColor3 = RGB(230, 230, 230),
+				TextSize = 13,
+				ZIndex = 20,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Bottom
+			})
+
+			self.Connections = window_f:makeDraggable(self.PickerWin, self.TopBar)
 			
-			g_picker.Current.Green = input
-			g_picker:Place()
-		end)
-		local B_TB = createValueTB("Blue", "0-255", Control, "c", function(input)
-			if g_picker.hsvDrag or g_picker.hueDrag or g_picker.alphaDrag then return end
-
-			g_picker.Current.Blue = input
-			g_picker:Place()
-		end)
-		local A_TB = createValueTB("Alpha", "0-255", Control, "d", function(input)
-			if g_picker.hsvDrag or g_picker.hueDrag or g_picker.alphaDrag then return end
-
-			g_picker.Current.Alpha = util._255_a(input)
-			g_picker:Place()
-		end)
-		local H_TB = createValueTB("Hex", "#", Control, "e", function(input)
-			if g_picker.hsvDrag or g_picker.hueDrag or g_picker.alphaDrag then return end
-
-			g_picker.Current.Hex = input
-
-			local c = HEX(input)
-
-			local r, g, b = util.c3_rgb(c)
-			local h, s, v = util.c3_hsv(c)
-
-			g_picker.Current.Red = r;           R_TB.Text = r;
-			g_picker.Current.Green = g;         G_TB.Text = g;
-			g_picker.Current.Blue = b;          B_TB.Text = b;
-
-			g_picker.Current.Hue = h;
-			g_picker.Current.Sat = s;
-			g_picker.Current.Val = v;
-
-			g_picker:Place()
-		end)
-
-		g_picker.hsvDrag = false
-		window_f:addConnection("InputBegan", SVPicker, function(input)
-			if input.UserInputType ~= MB1 then return end
-			g_picker.hsvDrag = true
-			g_picker:lockOn()
-		end)
-		--
-		g_picker.hueDrag = false
-		window_f:addConnection("InputBegan", HuePicker, function(input)
-			if input.UserInputType ~= MB1 then return end
-			g_picker.hueDrag = true
-			g_picker:lockOn()
-		end)
-		--
-		g_picker.alphaDrag = false
-		window_f:addConnection("InputBegan", AlphaPicker, function(input)
-			if input.UserInputType ~= MB1 then return end
-			g_picker.alphaDrag = true
-			g_picker:lockOn()
-		end)
-		--
-		window_f:addRawConnection(UIS.InputEnded:Connect(function(input)
-			if input.UserInputType == MB1 then
-				g_picker.hsvDrag = false
-				g_picker.hueDrag = false
-				g_picker.alphaDrag = false
+			self.Bar = util.create('Frame', {
+				Name = "Bar",
+				Parent = self.PickerWin,
+				BackgroundColor3 = RGB(205, 0, 255),
+				BorderSizePixel = 0,
+				Size = U2(1, 0, 0, 1),
+				ZIndex = 20
+			})
+			
+			self.SVPicker = util.create('ImageLabel', {
+				Name = "SVPicker",
+				Parent = self.PickerWin,
+				BackgroundColor3 = RGB(255, 255, 255),
+				BorderSizePixel = 0,
+				Position = U2(0, 7, 0, 20),
+				Size = U2(0, 100, 0, 100),
+				Image = "rbxassetid://4155801252",
+				ZIndex = 20
+			})
+			
+			self.Point = util.create('Frame', {
+				Name = "Point",
+				Parent = self.SVPicker,
+				BackgroundColor3 = RGB(255, 255, 255),
+				BorderColor3 = RGB(0, 0, 0),
+				Position = U2(0, 20, 0, 20),
+				Rotation = 45,
+				Size = U2(0, 2, 0, 2),
+				ZIndex = 20
+			})
+	
+			self.AlphaPicker = util.create('ImageLabel', {
+				Name = "AlphaPicker",
+				Parent = self.SVPicker,
+				BackgroundTransparency = 1,
+				BackgroundColor3 = RGB(255, 255, 255),
+				Position = U2(0, 124, 0, 0),
+				Size = U2(0, 8, 0, 100),
+				Image = "rbxassetid://9228941480",
+				ZIndex = 20
+			})
+			
+			self.AlphaPointer = util.create('ImageLabel', {
+				Name = "AlphaPointer",
+				Parent = self.AlphaPicker,
+				BackgroundColor3 = RGB(255, 255, 255),
+				BackgroundTransparency = 1,
+				Position = U2(0, -2, 0, 0),
+				Size = U2(0, 12, 0, 4),
+				Image = "rbxassetid://9233904690",
+				ZIndex = 20
+			})
+			
+			self.AlphaSpectrum = util.create('UIGradient', {
+				Name = "AlphaSpectrum",
+				Parent = self.AlphaPicker,
+				Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(255, 255, 255)), ColorSequenceKeypoint.new(1, RGB(255, 0, 4))}),
+				Rotation = 90,
+				Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(1, 0, 0)})
+			})
+			
+			self.HuePicker = util.create('Frame', {
+				Name = "HuePicker",
+				Parent = self.SVPicker,
+				BorderSizePixel = 0,
+				BackgroundColor3 = RGB(255, 255, 255),
+				Position = U2(0, 108, 0, 0),
+				Size = U2(0, 8, 0, 100),
+				ZIndex = 20
+			})
+			
+			self.HueSpectrum = util.create('UIGradient', {
+				Name = "HueSpectrum",
+				Parent = self.HuePicker,
+				Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(255, 0, 4)), ColorSequenceKeypoint.new(0.10000000149011612, RGB(255, 0, 200)), ColorSequenceKeypoint.new(0.20000000298023224, RGB(153, 0, 255)), ColorSequenceKeypoint.new(0.30000001192092896, RGB(0, 0, 255)), ColorSequenceKeypoint.new(0.4000000059604645, RGB(0, 149, 255)), ColorSequenceKeypoint.new(0.5, RGB(0, 255, 209)), ColorSequenceKeypoint.new(0.6000000238418579, RGB(0, 255, 55)), ColorSequenceKeypoint.new(0.699999988079071, RGB(98, 255, 0)), ColorSequenceKeypoint.new(0.800000011920929, RGB(251, 255, 0)), ColorSequenceKeypoint.new(0.8999999761581421, RGB(255, 106, 0)), ColorSequenceKeypoint.new(1, RGB(255, 0, 0))}),
+				Rotation = 270,
+				Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(1, 0, 0)})
+			})
+			
+			self.HuePointer = util.create('ImageLabel', {
+				Name = "HuePointer",
+				Parent = self.HuePicker,
+				BackgroundTransparency = 1,
+				Position = U2(0, -2, 0, 0),
+				Size = U2(0, 12, 0, 4),
+				Image = "rbxassetid://9233904690",
+				ZIndex = 20
+			})
+			
+			self.Control = util.create('Frame', {
+				Name = "Control",
+				Parent = self.PickerWin,
+				BackgroundTransparency = 1,
+				Position = U2(0, 7, 0, 125)
+			})
+			
+			self.Elements_List = util.create('UIListLayout', {
+				Parent = self.Control,
+				Name = "Elements_List",
+				SortOrder = Enum.SortOrder.Name
+			})
+			
+			--
+			self.R_TB = createValueTB("Red", "0-255", self.Control, "a", function(input)
+				if self.hsvDrag or self.hueDrag or self.alphaDrag then return end
+	
+				self.Current.Red = input
+				self:Place()
+			end)
+			self.G_TB = createValueTB("Green", "0-255", self.Control, "b", function(input)
+				if self.hsvDrag or self.hueDrag or self.alphaDrag then return end
+				
+				self.Current.Green = input
+				self:Place()
+			end)
+			self.B_TB = createValueTB("Blue", "0-255", self.Control, "c", function(input)
+				if self.hsvDrag or self.hueDrag or self.alphaDrag then return end
+	
+				self.Current.Blue = input
+				self:Place()
+			end)
+			self.A_TB = createValueTB("Alpha", "0-255", self.Control, "d", function(input)
+				if self.hsvDrag or self.hueDrag or self.alphaDrag then return end
+	
+				self.Current.Alpha = util._255_a(input)
+				self:Place()
+			end)
+			self.H_TB = createValueTB("Hex", "#", self.Control, "e", function(input)
+				if self.hsvDrag or self.hueDrag or self.alphaDrag then return end
+	
+				self.Current.Hex = input
+	
+				local c = HEX(input)
+	
+				local r, g, b = util.c3_rgb(c)
+				local h, s, v = util.c3_hsv(c)
+	
+				self.Current.Red = r;           self.R_TB.Text = r;
+				self.Current.Green = g;         self.G_TB.Text = g;
+				self.Current.Blue = b;          self.B_TB.Text = b;
+	
+				self.Current.Hue = h;
+				self.Current.Sat = s;
+				self.Current.Val = v;
+	
+				self:Place()
+			end)
+	
+			self.hsvDrag = false
+			window_f:addConnection("InputBegan", self.SVPicker, function(input)
+				if input.UserInputType ~= MB1 then return end
+				self.hsvDrag = true
+				self:lockOn()
+			end)
+			--
+			self.hueDrag = false
+			window_f:addConnection("InputBegan", self.HuePicker, function(input)
+				if input.UserInputType ~= MB1 then return end
+				self.hueDrag = true
+				self:lockOn()
+			end)
+			--
+			self.alphaDrag = false
+			window_f:addConnection("InputBegan", self.AlphaPicker, function(input)
+				if input.UserInputType ~= MB1 then return end
+				self.alphaDrag = true
+				self:lockOn()
+			end)
+			--
+			window_f:addRawConnection(UIS.InputEnded:Connect(function(input)
+				if input.UserInputType == MB1 then
+					self.hsvDrag = false
+					self.hueDrag = false
+					self.alphaDrag = false
+				end
+			end))
+			--
+	
+			function self:calculateHSVA()
+				local size, offset, origin, position, rel;
+	
+				size = self.HuePicker.AbsoluteSize.Y
+				origin = self.HuePicker.AbsolutePosition.Y
+				position = self.HuePointer.AbsolutePosition.Y
+				offset = self.HuePointer.AbsoluteSize.Y/2
+				local h = (position - (origin-offset)) / size
+	
+				size = self.SVPicker.AbsoluteSize.X
+				origin = self.SVPicker.AbsolutePosition.X
+				position = self.Point.AbsolutePosition.X
+				offset = self.Point.AbsoluteSize.X/2
+				local s = (position - (origin-offset)) / size
+	
+				size = self.SVPicker.AbsoluteSize.Y
+				origin = self.SVPicker.AbsolutePosition.Y
+				position = self.Point.AbsolutePosition.Y
+				offset = self.Point.AbsoluteSize.Y/2
+				local v = 1 - (position - (origin-offset)) / size
+	
+				size = self.AlphaPicker.AbsoluteSize.Y
+				origin = self.AlphaPicker.AbsolutePosition.Y
+				position = self.AlphaPointer.AbsolutePosition.Y
+				offset = self.AlphaPointer.AbsoluteSize.Y/2
+				local a = (position - (origin-offset)) / size
+	
+				return h, s, v, a
 			end
-		end))
-		--
-
-		function g_picker:calculateHSVA()
-			local size, offset, origin, position, rel;
-
-			size = HuePicker.AbsoluteSize.Y
-			origin = HuePicker.AbsolutePosition.Y
-			position = HuePointer.AbsolutePosition.Y
-			offset = HuePointer.AbsoluteSize.Y/2
-			local h = (position - (origin-offset)) / size
-
-			size = SVPicker.AbsoluteSize.X
-			origin = SVPicker.AbsolutePosition.X
-			position = Point.AbsolutePosition.X
-			offset = Point.AbsoluteSize.X/2
-			local s = (position - (origin-offset)) / size
-
-			size = SVPicker.AbsoluteSize.Y
-			origin = SVPicker.AbsolutePosition.Y
-			position = Point.AbsolutePosition.Y
-			offset = Point.AbsoluteSize.Y/2
-			local v = 1 - (position - (origin-offset)) / size
-
-			size = AlphaPicker.AbsoluteSize.Y
-			origin = AlphaPicker.AbsolutePosition.Y
-			position = AlphaPointer.AbsolutePosition.Y
-			offset = AlphaPointer.AbsoluteSize.Y/2
-			local a = (position - (origin-offset)) / size
-
-			return h, s, v, a
-		end
-		--
-		function g_picker:lockOn()
-			if g_picker.hsvDrag then
-				local ox = Point.AbsoluteSize.X/2
-				local nx = Mouse.X - SVPicker.AbsolutePosition.X - ox
-
-				local oy = Point.AbsoluteSize.Y/2
-				local ny = Mouse.Y - SVPicker.AbsolutePosition.Y - oy
-
-				Point.Position = U2(0, CLAMP(nx, -ox, SVPicker.AbsoluteSize.X-ox), 0, CLAMP(ny, -oy, SVPicker.AbsoluteSize.Y-oy))
-
-				g_picker:Update()
-			elseif g_picker.hueDrag then
-				local oy = HuePointer.AbsoluteSize.Y/2
-				local ny = Mouse.Y - HuePicker.AbsolutePosition.Y - oy
-
-				HuePointer.Position = U2(0, -2, 0, CLAMP(ny, -oy, HuePicker.AbsoluteSize.Y-oy))
-
-				g_picker:Update()
-			elseif g_picker.alphaDrag then
-				local oy = AlphaPointer.AbsoluteSize.Y/2
-				local ny = Mouse.Y - AlphaPicker.AbsolutePosition.Y - oy
-
-				AlphaPointer.Position = U2(0, -2, 0, CLAMP(ny, -oy, AlphaPicker.AbsoluteSize.Y-oy))
-
-				g_picker:Update()
+			--
+			function self:lockOn()
+				if self.hsvDrag then
+					local ox = self.Point.AbsoluteSize.X/2
+					local nx = Mouse.X - self.SVPicker.AbsolutePosition.X - ox
+	
+					local oy = self.Point.AbsoluteSize.Y/2
+					local ny = Mouse.Y - self.SVPicker.AbsolutePosition.Y - oy
+	
+					self.Point.Position = U2(0, CLAMP(nx, -ox, self.SVPicker.AbsoluteSize.X-ox), 0, CLAMP(ny, -oy, self.SVPicker.AbsoluteSize.Y-oy))
+	
+					self:Update()
+				elseif self.hueDrag then
+					local oy = self.HuePointer.AbsoluteSize.Y/2
+					local ny = Mouse.Y - self.HuePicker.AbsolutePosition.Y - oy
+	
+					self.HuePointer.Position = U2(0, -2, 0, CLAMP(ny, -oy, self.HuePicker.AbsoluteSize.Y-oy))
+	
+					self:Update()
+				elseif self.alphaDrag then
+					local oy = self.AlphaPointer.AbsoluteSize.Y/2
+					local ny = Mouse.Y - self.AlphaPicker.AbsolutePosition.Y - oy
+	
+					self.AlphaPointer.Position = U2(0, -2, 0, CLAMP(ny, -oy, self.AlphaPicker.AbsoluteSize.Y-oy))
+	
+					self:Update()
+				end
 			end
-		end
-		window_f:addRawConnection(UIS.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement and g_picker.GlobalCP.Visible then
-				g_picker:lockOn()
-			end
-		end))
-
-		--
-
-		function g_picker:updateCurrent(new, alpha, real)
-			if typeof(new) ~= "Color3" then return end
-
-			local a255 = util.a_255(alpha)
-
-			local r,g,b = util.c3_rgb(new)
-			g_picker.Current.Red = r;           R_TB.Text = r;
-			g_picker.Current.Green = g;         G_TB.Text = g;
-			g_picker.Current.Blue = b;          B_TB.Text = b;
-			g_picker.Current.Alpha = alpha;      A_TB.Text = ROUND(a255);
-
-			local h,s,v;
-
-			if (real) then
-				local s = pcall(function()
-					h = real.h
-					s = real.s
-					v = real.v
-				end)
-				if not s then
+			window_f:addRawConnection(UIS.InputChanged:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseMovement and self.PickerWin.Visible then
+					self:lockOn()
+				end
+			end))
+	
+			--
+	
+			function self:updateCurrent(new, alpha, real)
+				if typeof(new) ~= "Color3" then return end
+	
+				local a255 = util.a_255(alpha)
+	
+				local r,g,b = util.c3_rgb(new)
+				self.Current.Red = r;           self.R_TB.Text = r;
+				self.Current.Green = g;         self.G_TB.Text = g;
+				self.Current.Blue = b;          self.B_TB.Text = b;
+				self.Current.Alpha = alpha;     self.A_TB.Text = ROUND(a255);
+	
+				local h,s,v;
+	
+				if (real) then
+					local s = pcall(function()
+						h = real.h
+						s = real.s
+						v = real.v
+					end)
+					if not s then
+						h,s,v = util.c3_hsv(new)
+					end
+				else
 					h,s,v = util.c3_hsv(new)
 				end
-			else
-				h,s,v = util.c3_hsv(new)
+				
+				self.Current.Hue = h;
+				self.Current.Sat = s;
+				self.Current.Val = v;
+	
+				local _,hex = pcall(function() return util.c3_hex(new) end)
+	
+				self.Current.Hex = hex; 
+				self.H_TB.Text = hex; 
+	
+				self.AlphaSpectrum.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(255, 255, 255)), ColorSequenceKeypoint.new(1, new)});
+				self.SVPicker.BackgroundColor3 = HSV(h, 1, 1)
+	
+				self.Callback(new, alpha)
 			end
-			
-			g_picker.Current.Hue = h;
-			g_picker.Current.Sat = s;
-			g_picker.Current.Val = v;
-
-			local _,hex = pcall(function() return util.c3_hex(new) end)
-
-			g_picker.Current.Hex = hex; 
-			H_TB.Text = hex; 
-
-			AlphaSpectrum.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, RGB(255, 255, 255)), ColorSequenceKeypoint.new(1, new)});
-			SVPicker.BackgroundColor3 = HSV(h, 1, 1)
-
-			g_picker.Callback(new, alpha)
-		end
-		--
-		function g_picker:Update()
-			local h, s, v, a = self:calculateHSVA()
-
-			self:updateCurrent(HSV(h,s,v), a, {h=h,s=s,v=v})
-		end
-		--
-		function g_picker:Place()
-			local c = RGB(g_picker.Current.Red, g_picker.Current.Green, g_picker.Current.Blue)
-			local h, s, v = util.c3_hsv(c)
-			local a = g_picker.Current.Alpha
-
-			Point.Position = U2(0, SVPicker.AbsoluteSize.X * s - Point.AbsoluteSize.X/2, 0, SVPicker.AbsoluteSize.Y - SVPicker.AbsoluteSize.Y * v  - Point.AbsoluteSize.Y/2)
-			HuePointer.Position = U2(0, -2, 0, HuePicker.AbsoluteSize.Y * h - HuePointer.AbsoluteSize.Y/2)
-			AlphaPointer.Position = U2(0, -2, 0, AlphaPicker.AbsoluteSize.Y - AlphaPicker.AbsoluteSize.Y * (1-a) - AlphaPointer.AbsoluteSize.Y/2)
-
-			self:updateCurrent(c, a)
+			--
+			function self:Update()
+				local h, s, v, a = self:calculateHSVA()
+	
+				self:updateCurrent(HSV(h,s,v), a, {h=h,s=s,v=v})
+			end
+			--
+			function self:Place()
+				local c = RGB(self.Current.Red, self.Current.Green, self.Current.Blue)
+				local h, s, v = util.c3_hsv(c)
+				local a = self.Current.Alpha
+	
+				self.Point.Position = U2(0, self.SVPicker.AbsoluteSize.X * s - self.Point.AbsoluteSize.X/2, 0, self.SVPicker.AbsoluteSize.Y - self.SVPicker.AbsoluteSize.Y * v  - self.Point.AbsoluteSize.Y/2)
+				self.HuePointer.Position = U2(0, -2, 0, self.HuePicker.AbsoluteSize.Y * h - self.HuePointer.AbsoluteSize.Y/2)
+				self.AlphaPointer.Position = U2(0, -2, 0, self.AlphaPicker.AbsoluteSize.Y - self.AlphaPicker.AbsoluteSize.Y * (1-a) - self.AlphaPointer.AbsoluteSize.Y/2)
+	
+				self:updateCurrent(c, a)
+			end
 		end
 		
-	end
-	--
+		function picker_factory:new(Name, Current, Callback)
+			local picker = {}
 
-	local Pages = util.create('Folder', {
-		Name = "Pages",
-		Parent = Window
-	})
-	
-	local PageSelector = util.create('ScrollingFrame', {
-		Name = "PageSelector",
-		Parent = Window,
-		BackgroundColor3 = RGB(14, 31, 66),
-		BorderColor3 = RGB(10, 18, 38),
-		BorderSizePixel = 0,
-		Position = U2(0, 0, 0, 1),
-		Selectable = true,
-		Size = U2(1, 0, 0, 20),
-		ZIndex = 2,
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
-		CanvasSize = U2(1, 0, 0, 0),
-		ScrollBarThickness = 0,
-		ScrollingDirection = Enum.ScrollingDirection.X
-	})
-	
-	local PageListLayout = util.create('UIListLayout', {
-		Parent = PageSelector,
-		Padding = U1(0, 4),
-		Name = "PageListLayout",
-		FillDirection = Enum.FillDirection.Horizontal
-	})
+			setmetatable(picker, picker_factory)
 
-	local TopBar = util.create('Frame', {
-		Name = "TopBar",
-		Parent = Window,
-		BackgroundColor3 = RGB(205, 0, 255),
-		BorderSizePixel = 0,
-		Size = U2(1, 0, 0, 1),
-		ZIndex = 3
-	})
+			picker.Current = Current
+			picker.Callback = Callback
 
-	function window_f:hideAllPages(MUTEX)
-		window_f.currentPage = nil
-		for _,p in next, Pages:GetChildren() do
-			if p:IsA("ScrollingFrame") then
-				local v = (p == MUTEX)
-				p.Visible = v
-				if v then
-					local root = p.Attach.Value
-					window_f.currentPage = root
+			picker:createUI(Name, Current, Callback)
 
-					root.BackgroundTransparency = 0
-					root.Bar.Visible = true
-				else
-					local root = p.Attach.Value
-
-					root.BackgroundTransparency = 1
-					root.Bar.Visible = false
-				end
-			end
+			return picker
 		end
 	end
-	window_f:hideAllPages()
-	--
+	---------------------------------------
 
-	-- DRAGGING
-	do
-		local draggingUI = false;
-		local Previous_Offset;
-
-		local dragTween = false;
-		local previousPos = V2(Window.AbsolutePosition.X, Window.AbsolutePosition.Y);
-
-		window_f:addRawConnection(UIS.InputChanged:Connect(function(input)
-			if draggingUI and input.UserInputType == UIT.MouseMovement then
-				if dragTween then dragTween:Cancel() end
-
-				local nx, ny = ROUND(Mouse.X + Previous_Offset.X), ROUND(Mouse.Y + Previous_Offset.Y)
-
-				dragTween = TS:Create(Window, TWEEN(0.04, ESS, EDO), {Position = U2(0, nx, 0, ny)})
-				dragTween:Play()
-
-				local newPos = V2(nx, ny)
-
-				if newPos ~= previousPos then
-					window_i.Position_Callback(newPos)
-				end
-
-				previousPos = newPos
-			end
-		end))
-
-		window_f:addRawConnection(UIS.InputBegan:Connect(function(input)
-			if input.UserInputType == MB1 and util.mouseIn(PageSelector) then
-				Previous_Offset = V2(Window.AbsolutePosition.X, Window.AbsolutePosition.Y) - V2(Mouse.X, Mouse.Y)
-				draggingUI = true
-			end
-		end))
-
-		window_f:addRawConnection(UIS.InputEnded:Connect(function(input)
-			if input.UserInputType == MB1 then
-				draggingUI = false
-			end
-		end))
-
-		function window_f:SetPosition(position)
-			Window.Position = U2(0, position.X, 0, position.Y)
-			window_i.Position_Callback(position)
-		end
-	end
-	--
-
-	-- PAGE Constructor - Options
+	--[[-----------------------------------
+                Page Constructor
+    -----------------------------------]]--
 	function window_f.NewPage(options)
 		local page_i = util.merge(util.def_page, options)
 		local page_f = {}
@@ -698,7 +765,8 @@ function library.New(options)
 			CanvasSize = U2(0, 0, 1, -7),
 			ScrollBarImageColor3 = RGB(174, 0, 255),
 			Visible = false,
-			ScrollBarThickness = 1
+			ScrollBarThickness = 1,
+			ZIndex = 1
 		})
 		
 		local Elements = util.create('UIListLayout', {
@@ -718,11 +786,11 @@ function library.New(options)
 			Selectable = true,
 			Size = U2(0, 100, 1, 0),
 			Style = Enum.ButtonStyle.Custom,
-			ZIndex = 3,
 			Font = Enum.Font.Code,
 			Text = page_i.Text,
 			TextColor3 = RGB(230, 230, 230),
-			TextSize = 13
+			TextSize = 13,
+			ZIndex = 2
 		})
 		spawn(function()
 			WAIT(0.5) -- TextBounds not updating
@@ -736,7 +804,7 @@ function library.New(options)
 			BorderSizePixel = 0,
 			Size = U2(1, 0, 0, 2),
 			Visible = false,
-			ZIndex = 4
+			ZIndex = 2
 		})
 
 		local Attach = util.create('ObjectValue', {
@@ -783,11 +851,11 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
-				ZIndex = 3,
 				Font = Enum.Font.Code,
 				Text = button_i.Text,
 				TextColor3 = RGB(230, 230, 230),
 				TextSize = 13,
+				ZIndex = 2,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
@@ -800,12 +868,13 @@ function library.New(options)
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
-				Text = "[undefined]",
+				Text = "[NONE]",
 				TextColor3 = RGB(178, 178, 178),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,
-				TextYAlignment = Enum.TextYAlignment.Bottom
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				ZIndex = 2
 			})
 
 			local TextDetector = util.create('TextButton', {
@@ -818,9 +887,9 @@ function library.New(options)
 				Selectable = true,
 				Size = U2(1, 0, 0, 14),
 				Style = Enum.ButtonStyle.Custom,
-				ZIndex = 5,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 3
 			})
 			
 			
@@ -834,9 +903,9 @@ function library.New(options)
 				Selectable = true,
 				Size = U2(0, 77, 0, 14),
 				Style = Enum.ButtonStyle.Custom,
-				ZIndex = 6,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 3
 			})
 
 			function button_f:ScaleText()
@@ -854,7 +923,7 @@ function library.New(options)
 					local cut = SUB(tostring(currentBind), 14, #tostring(currentBind))
 					Bind.Text =  "[" .. cut .. "]"
 				else
-					Bind.Text = "[undefined]"
+					Bind.Text = "[NONE]"
 				end
 				button_i.KCallback(currentBind) 
 
@@ -932,6 +1001,51 @@ function library.New(options)
 				Size = U2(1, 0, 0, 20),
 				ZIndex = 2
 			})
+
+			local ON = util.create('Frame', {
+				Name = "ON",
+				Parent = Toggle,
+				BackgroundColor3 = RGB(205, 0, 255),
+				BorderSizePixel = 0,
+				Position = U2(0, 0, 0.5, -3),
+				Size = U2(0, 9, 0, 6),
+				ZIndex = 2
+			})
+			
+			local OFF = util.create('Frame', {
+				Name = "OFF",
+				Parent = Toggle,
+				BackgroundColor3 = RGB(60, 60, 60),
+				BorderSizePixel = 0,
+				Position = U2(0, 9, 0.5, -3),
+				Size = U2(0, 9, 0, 6),
+				ZIndex = 2
+			})
+			local CACHE = util.create('Frame', {
+				Name = "CACHE",
+				Parent = Toggle,
+				BackgroundColor3 = RGB(175, 175, 175),
+				BorderSizePixel = 0,
+				Position = U2(0, 9, 0.5, -3),
+				Size = U2(0, 9, 0, 6),
+				ZIndex = 2
+			})
+
+			local Text = util.create('TextLabel', {
+				Name = "Text",
+				Parent = Toggle,
+				BackgroundTransparency = 1,
+				Position = U2(0, 25, 0.5, -1),
+				Size = U2(1, -25, 0, 6),
+				Font = Enum.Font.Code,
+				Text = toggle_i.Text,
+				TextColor3 = RGB(230, 230, 230),
+				TextSize = 13,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				ZIndex = 2
+			})
 			
 			local TextDetector = util.create('TextButton', {
 				Name = "TextDetector",
@@ -943,54 +1057,8 @@ function library.New(options)
 				Selectable = true,
 				Size = U2(1, 0, 0, 14),
 				Style = Enum.ButtonStyle.Custom,
-				ZIndex = 5,
 				Text = "",
-				TextSize = 14
-			})
-			
-			local Text = util.create('TextLabel', {
-				Name = "Text",
-				Parent = Toggle,
-				BackgroundTransparency = 1,
-				Position = U2(0, 25, 0.5, -1),
-				Size = U2(1, -25, 0, 6),
-				ZIndex = 3,
-				Font = Enum.Font.Code,
-				Text = toggle_i.Text,
-				TextColor3 = RGB(230, 230, 230),
-				TextSize = 13,
-				TextTruncate = Enum.TextTruncate.AtEnd,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextYAlignment = Enum.TextYAlignment.Bottom
-			})
-			
-			local CACHE = util.create('Frame', {
-				Name = "CACHE",
-				Parent = Toggle,
-				BackgroundColor3 = RGB(175, 175, 175),
-				BorderSizePixel = 0,
-				Position = U2(0, 9, 0.5, -3),
-				Size = U2(0, 9, 0, 6),
-				ZIndex = 4
-			})
-			
-			local ON = util.create('Frame', {
-				Name = "ON",
-				Parent = Toggle,
-				BackgroundColor3 = RGB(205, 0, 255),
-				BorderSizePixel = 0,
-				Position = U2(0, 0, 0.5, -3),
-				Size = U2(0, 9, 0, 6),
-				ZIndex = 3
-			})
-			
-			local OFF = util.create('Frame', {
-				Name = "OFF",
-				Parent = Toggle,
-				BackgroundColor3 = RGB(60, 60, 60),
-				BorderSizePixel = 0,
-				Position = U2(0, 9, 0.5, -3),
-				Size = U2(0, 9, 0, 6),
+				TextSize = 14,
 				ZIndex = 3
 			})
 			
@@ -1001,12 +1069,13 @@ function library.New(options)
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
 				Font = Enum.Font.Code,
-				Text = "[undefined]",
+				Text = "[NONE]",
 				TextColor3 = RGB(178, 178, 178),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,
-				TextYAlignment = Enum.TextYAlignment.Bottom
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				ZIndex = 2
 			})
 			
 			local BindDetector = util.create('TextButton', {
@@ -1019,9 +1088,9 @@ function library.New(options)
 				Selectable = true,
 				Size = U2(0, 77, 0, 14),
 				Style = Enum.ButtonStyle.Custom,
-				ZIndex = 6,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 3
 			})
 
 			function toggle_f:ScaleText()
@@ -1039,7 +1108,7 @@ function library.New(options)
 					local cut = SUB(tostring(currentBind), 14, #tostring(currentBind))
 					Bind.Text =  "[" .. cut .. "]"
 				else
-					Bind.Text = "[undefined]"
+					Bind.Text = "[NONE]"
 				end
 				toggle_i.KCallback(currentBind) 
 
@@ -1145,7 +1214,8 @@ function library.New(options)
 				Size = U2(1, 0, 0, 5),
 				Style = Enum.ButtonStyle.Custom,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 2
 			})
 			
 			local Fill = util.create('Frame', {
@@ -1153,7 +1223,8 @@ function library.New(options)
 				Parent = Bar,
 				BackgroundColor3 = RGB(205, 0, 255),
 				BorderSizePixel = 0,
-				Size = U2(0, 100, 1, 0)
+				Size = U2(0, 100, 1, 0),
+				ZIndex = 3
 			})
 			
 			local Sub = util.create('Frame', {
@@ -1169,14 +1240,14 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
-				ZIndex = 3,
 				Font = Enum.Font.Code,
 				Text = slider_i.Text,
 				TextColor3 = RGB(230, 230, 230),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
-				TextYAlignment = Enum.TextYAlignment.Bottom
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				ZIndex = 2
 			})
 			
 			local Value = util.create('TextBox', {
@@ -1187,14 +1258,14 @@ function library.New(options)
 				CursorPosition = -1,
 				Position = U2(0, 0, 0.5, -6),
 				Size = U2(1, -2, 0, 10),
-				ZIndex = 3,
 				Text = "",
 				TextColor3 = RGB(178, 178, 178),
 				PlaceholderText = (slider_i.Min .. "-" .. slider_i.Max),
 				Font = Enum.Font.Code,
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
-				TextXAlignment = Enum.TextXAlignment.Right
+				TextXAlignment = Enum.TextXAlignment.Right,
+				ZIndex = 3
 			})
 			--
 
@@ -1339,14 +1410,14 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
-				ZIndex = 3,
 				Font = Enum.Font.Code,
 				Text = picker_i.Text,
 				TextColor3 = RGB(230, 230, 230),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
-				TextYAlignment = Enum.TextYAlignment.Bottom
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				ZIndex = 2
 			})
 			
 			local Detector = util.create('TextButton', {
@@ -1361,9 +1432,9 @@ function library.New(options)
 				Selectable = true,
 				Size = U2(0, 18, 0, 8),
 				Style = Enum.ButtonStyle.Custom,
-				ZIndex = 3,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 3
 			})
 			
 			local AlphaGrid = util.create('ImageLabel', {
@@ -1380,50 +1451,49 @@ function library.New(options)
 
 			--
 
+			local Picker = nil;
+			local Toggled = false;
 			window_f:addConnection("MouseButton1Click", Detector, function()
-				if (g_picker.previousDetector ~= Detector or not g_picker.GlobalCP.Visible) then
-					g_picker.GlobalCP.Visible = true
-					g_picker.GlobalCP.Position = U2(1, 8, 0, Detector.AbsolutePosition.Y-Window.AbsolutePosition.Y)
+				if Toggled then
+					if Picker and Picker.PickerWin then
+						Picker.PickerWin:Remove()
+						
+						if Picker.Connections then
+							for _,connection in next, Picker.Connections do
+								connection:Disconnect()
+							end
+						end
 
+						Picker = nil
+					end
+				else
 					local r, g, b = util.c3_rgb(Detector.BackgroundColor3)
 					local h, s, v = util.c3_hsv(Detector.BackgroundColor3)
-					
-					g_picker.Callback = function(c, a)
-						Detector.BackgroundColor3 = c 
-						Detector.BackgroundTransparency = util.a_t(a)
 
-						picker_i.Callback(c, a)
-					end
-					g_picker.Current = {
+					Picker = picker_factory:new(picker_i.Text or "Picker", {
 						Red = r,
 						Green = g,
 						Blue = b,
-						Alpha = util.t_a(Detector.BackgroundTransparency),
-						Hex = util.c3_hex(Detector.BackgroundColor3),
 
 						Hue = h,
 						Sat = s,
-						Val = v
-					}
+						Val = v,
 
-					g_picker:Place()
-				else
-					g_picker.GlobalCP.Visible = false
-					g_picker.Callback = function(c, a) end
-					g_picker.Current = {
-						Red = 1,
-						Green = 1,
-						Blue = 1,
-						Alpha = 1,
-						Hex = "#FFFFFF",
+						Hex = util.c3_hex(Detector.BackgroundColor3),
+						
+						Alpha = util.t_a(Detector.BackgroundTransparency)
+					}, function(c, a)
+						Detector.BackgroundColor3 = c
+						Detector.BackgroundTransparency = util.a_t(a)
 
-						Hue = 0,
-						Sat = 0,
-						Val = 1
-					}
+						picker_i.Callback(c, a)
+					end)
+
+					Picker.PickerWin.Position = U2(0, Window.AbsolutePosition.X+Window.AbsoluteSize.X+8, 0, Window.AbsolutePosition.Y + Detector.AbsolutePosition.Y-Window.AbsolutePosition.Y)
+					Picker:Place()
 				end
 
-				g_picker.previousDetector = Detector
+				Toggled = not Toggled
 			end)
 
 			function picker_f:GetText()
@@ -1464,7 +1534,7 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
-				ZIndex = 3,
+				ZIndex = 2,
 				Font = Enum.Font.Code,
 				Text = dropdown_i.Text,
 				TextColor3 = RGB(230, 230, 230),
@@ -1486,7 +1556,8 @@ function library.New(options)
 				Size = U2(1, 0, 0, 14),
 				Style = Enum.ButtonStyle.Custom,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 2
 			})
 			
 			local Current = util.create('TextLabel', {
@@ -1495,13 +1566,13 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 4, 0, 0),
 				Size = U2(1, -4, 1, 0),
-				ZIndex = 3,
 				Font = Enum.Font.Code,
 				Text = dropdown_i.Options[dropdown_i.Default] or "NONE",
 				TextColor3 = dropdown_i.Options[dropdown_i.Default] and RGB(230, 230, 230) or RGB(160, 160, 160),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
-				TextXAlignment = Enum.TextXAlignment.Left
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 3
 			})
 			
 			local Container = util.create('Frame', {
@@ -1511,7 +1582,7 @@ function library.New(options)
 				Position = U2(0, 0, 0, 38),
 				Size = U2(1, 0, 0, 20),
 				Visible = false,
-				ZIndex = 9
+				ZIndex = 10
 			})
 
 			local OptionList = util.create('UIListLayout', {
@@ -1580,13 +1651,13 @@ function library.New(options)
 					BackgroundTransparency = 1,
 					Position = U2(0, 4, 0, 0),
 					Size = U2(1, -4, 1, 0),
-					ZIndex = 11,
 					Font = Enum.Font.Code,
 					Text = o,
 					TextColor3 = RGB(230, 230, 230),
 					TextSize = 13,
 					TextTruncate = Enum.TextTruncate.AtEnd,
-					TextXAlignment = Enum.TextXAlignment.Left
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ZIndex = 10
 				})
 
 				window_f:addConnection("MouseButton1Click", Option, function()
@@ -1637,7 +1708,7 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
-				ZIndex = 3,
+				ZIndex = 2,
 				Font = Enum.Font.Code,
 				Text = chipset_i.Text,
 				TextColor3 = RGB(230, 230, 230),
@@ -1659,7 +1730,8 @@ function library.New(options)
 				Size = U2(1, 0, 0, 14),
 				Style = Enum.ButtonStyle.Custom,
 				Text = "",
-				TextSize = 14
+				TextSize = 14,
+				ZIndex = 2
 			})
 			
 			local Current = util.create('TextLabel', {
@@ -1668,13 +1740,13 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 4, 0, 0),
 				Size = U2(1, -4, 1, 0),
-				ZIndex = 3,
 				Font = Enum.Font.Code,
 				Text = "NONE",
 				TextColor3 = RGB(160, 160, 160),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
-				TextXAlignment = Enum.TextXAlignment.Left
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 3
 			})
 			
 			local Container = util.create('Frame', {
@@ -1684,7 +1756,7 @@ function library.New(options)
 				Position = U2(0, 0, 0, 38),
 				Size = U2(1, 0, 0, 20),
 				Visible = false,
-				ZIndex = 9
+				ZIndex = 10
 			})
 
 			local OptionList = util.create('UIListLayout', {
@@ -1750,13 +1822,13 @@ function library.New(options)
 					BackgroundTransparency = 1,
 					Position = U2(0, 4, 0, 0),
 					Size = U2(1, -4, 1, 0),
-					ZIndex = 11,
 					Font = Enum.Font.Code,
 					Text = o,
 					TextColor3 = chipset_i.Options[o] and RGB(205, 0, 255) or RGB(230, 230, 230),
 					TextSize = 13,
 					TextTruncate = Enum.TextTruncate.AtEnd,
-					TextXAlignment = Enum.TextXAlignment.Left
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ZIndex = 10
 				})
 
 				window_f:addConnection("MouseButton1Click", Option, function()
@@ -1799,14 +1871,14 @@ function library.New(options)
 				BackgroundTransparency = 1,
 				Position = U2(0, 0, 0.5, -1),
 				Size = U2(1, 0, 0, 6),
-				ZIndex = 3,
 				Font = Enum.Font.Code,
 				Text = label_i.Text,
 				TextColor3 = RGB(255, 255, 255),
 				TextSize = 13,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Left,
-				TextYAlignment = Enum.TextYAlignment.Bottom
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				ZIndex = 2
 			})
 
 			--
@@ -1838,7 +1910,7 @@ function library.New(options)
 				BorderSizePixel = 0,
 				Position = U2(0, 0, 0.5, 0),
 				Size = U2(1, 0, 0, 1),
-				ZIndex = 3
+				ZIndex = 2
 			})
 		end
 		
@@ -1849,69 +1921,78 @@ function library.New(options)
 	return window_f
 end
 
-return library
+--[[---------------------
+		 Export
+---------------------]]--
+if false then
+	return library
+end
 
--- do -- Example
---     loadstring(string.rep("warn();", 4))()
 
---     local W = library.New({
---         Text = "Window", 
---         Position = V2(200, 200),
---         Position_Callback = function(v)
---             print(tostring(v))
---         end
---     })
---     local P = W.NewPage({Text="ESP"})
---     local P = W.NewPage({Text="Aimbot"})
+--[[---------------------
+		 Example
+---------------------]]--
+if true then
+    loadstring(string.rep("warn();", 4))()
+
+    local W = library.New({
+        Text = "Window", 
+        Position = V2(200, 200),
+        Position_Callback = function(v)
+            print(tostring(v))
+        end
+    })
+    local P = W.NewPage({Text="ESP"})
+    local P = W.NewPage({Text="Aimbot"})
 	
---     P:NewButton({
---         Text = "Close", 
---         Key = Enum.KeyCode.X,
---         Callback = function() print("bind pressed"); W:Close() end,
---         KCallback = function(new) print("set bind to: " .. tostring(new)) end
---     })
+    P:NewButton({
+        Text = "Close", 
+        Key = Enum.KeyCode.X,
+        Callback = function() print("bind pressed"); W:Close() end,
+        KCallback = function(new) print("set bind to: " .. tostring(new)) end
+    })
 
---     P:NewToggle({
---         Text = "Aimbot", 
---         State = true,
---         Key = Enum.KeyCode.B,
---         Callback = function(state) print("now: " .. tostring(state)) end,
---         KCallback = function(new) print("set bind to: " .. tostring(new)) end
---     })
+    P:NewToggle({
+        Text = "Aimbot", 
+        State = true,
+        Key = Enum.KeyCode.B,
+        Callback = function(state) print("now: " .. tostring(state)) end,
+        KCallback = function(new) print("set bind to: " .. tostring(new)) end
+    })
 
---     P:NewSlider({Text="Slide", Default = 1, Min = 0, Max = 10, Decimals = 4, Suffix = "px",
---         Callback = function(v)
---             warn(v)
---         end
---     })
+    P:NewSlider({Text="Slide", Default = 1, Min = 0, Max = 10, Decimals = 4, Suffix = "px",
+        Callback = function(v)
+            warn(v)
+        end
+    })
 
---     P:NewPicker({Text="FOV Color", Default = {RGB(0, 0, 255), 1},
---         Callback = function(c, a)
---             warn(tostring(c), tostring(a))
---         end
---     })
---     P:NewPicker({Text="BOX Color", Default = {RGB(0, 0, 0), 1},
---         Callback = function(c, a)
---             warn(tostring(c), tostring(a))
---         end
---     })
---     P:NewDropdown({Text="BOX Location", Options = {"Head", "Torso", "Feet"}, Default = 1,
---         Callback = function(o)
---             warn(tostring(o))
---         end
---     })
---     P:NewChipset({Text="BOX Location", Options = {["Head"] = true, ["Torso"] = false, ["Feet"] = true},
---         Callback = function(options)
---             warn()
---             for i,v in pairs(options) do
---                 print(i,v)
---             end
---         end
---     })
+    P:NewPicker({Text="FOV Color", Default = {RGB(0, 0, 255), 1},
+        Callback = function(c, a)
+            warn(tostring(c), tostring(a))
+        end
+    })
+    P:NewPicker({Text="BOX Color", Default = {RGB(0, 0, 0), 1},
+        Callback = function(c, a)
+            warn(tostring(c), tostring(a))
+        end
+    })
+    P:NewDropdown({Text="BOX Location", Options = {"Head", "Torso", "Feet"}, Default = 1,
+        Callback = function(o)
+            warn(tostring(o))
+        end
+    })
+    P:NewChipset({Text="BOX Location", Options = {["Head"] = true, ["Torso"] = false, ["Feet"] = true},
+        Callback = function(options)
+            warn()
+            for i,v in pairs(options) do
+                print(i,v)
+            end
+        end
+    })
 
---     P:NewSeparator()
---     P:NewLabel({Text = "Label"})
+    P:NewSeparator()
+    P:NewLabel({Text = "Label"})
 
---     local P = W.NewPage({Text="Visuals"})
---     local P = W.NewPage({Text="Environnment"})
--- end
+    local P = W.NewPage({Text="Visuals"})
+    local P = W.NewPage({Text="Environnment"})
+end
