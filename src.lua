@@ -1578,7 +1578,7 @@ function library.New(options)
 			window_f:addConnection("MouseButton1Click", Detector, function()
 				if Toggled then
 					if Picker and Picker.PickerWin then
-						Picker.PickerWin:Remove()
+						Picker.PickerWin:Destroy()
 						
 						if Picker.Connections then
 							for _,connection in next, Picker.Connections do
