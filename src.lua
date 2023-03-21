@@ -23,14 +23,14 @@ do -- Default Creation Params
 		Text = "Button",
 		Key = false,
 		Callback = function()end,
-		KCallback = function(newkey)end
+		KeyCallBack = function(newkey)end
 	}
 	library.def_toggle = {
 		Text = "Toggle",
 		Default = false,
 		Key = false,
 		Callback = function(state)end,
-		KCallback = function(newkey)end
+		KeyCallBack = function(newkey)end
 	}
 	library.def_picker = {
 		Text = "Picker",
@@ -1043,7 +1043,7 @@ function library.New(options)
 				else
 					Bind.Text = "[NONE]"
 				end
-				button_i.KCallback(currentBind) 
+				button_i.KeyCallBack(currentBind) 
 
 				self:ScaleText()
 			end
@@ -1237,7 +1237,7 @@ function library.New(options)
 				else
 					Bind.Text = "[NONE]"
 				end
-				toggle_i.KCallback(currentBind) 
+				toggle_i.KeyCallBack(currentBind) 
 
 				self:ScaleText()
 			end
@@ -2270,14 +2270,14 @@ if false then
         Text = "Close", 
         Key = Enum.KeyCode.X,
         Callback = function() print("bind pressed"); W:Close() end,
-        KCallback = function(new) print("set bind to: " .. tostring(new)) end
+        KeyCallBack = function(new) print("set bind to: " .. tostring(new)) end
     })
 
 	P:NewButton({
         Text = "Toggle Gui", 
         Key = Enum.KeyCode.End,
         Callback = function() W:Toggle() end,
-        KCallback = function(new) print("set toggle bind to: " .. tostring(new)) end
+        KeyCallBack = function(new) print("set toggle bind to: " .. tostring(new)) end
     })
 
     P:NewToggle({
@@ -2285,7 +2285,7 @@ if false then
         State = true,
         Key = Enum.KeyCode.B,
         Callback = function(state) print("now: " .. tostring(state)) end,
-        KCallback = function(new) print("set bind to: " .. tostring(new)) end
+        KeyCallBack = function(new) print("set bind to: " .. tostring(new)) end
     })
 
     P:NewSlider({Text="Slide", Default = 1, Min = 0, Max = 10, Decimals = 4, Suffix = "px",
