@@ -12,6 +12,8 @@ do -- Default Creation Params
 	library.def_window = {
 		Text = "Window",
 		Theme_Overrides = {},
+
+		Size = V2(220, 350),
 		--
 		Position = V2(500, 500),
 		Position_Callback = function(n)end, -- Fires every window_f position change
@@ -81,7 +83,7 @@ local ESS = Enum.EasingStyle.Sine
 --[[---------------------------
 			Library
 ---------------------------]]--
-function library.New(options)
+function library.new(options)
 	local window_i = util.merge(library.def_window, options)
 	local window_f = {}
 
@@ -132,13 +134,13 @@ function library.New(options)
 		window_f.Theme = window_f.DefaultTheme;
 		window_f.ThemeUpdaters = {};
 
-		function window_f:OverrideTheme(overrides)
+		function window_f:overrideTheme(overrides)
             self.Theme = util.merge(self.Theme, overrides)
         end
-		function window_f:NewThemeUpdater(element, properties)
+		function window_f:newThemeUpdater(element, properties)
 			self.ThemeUpdaters[element] = properties
         end
-		function window_f:UpdateTheme()
+		function window_f:updateTheme()
 			for i,v in next, self.Theme_Pickers or {} do
                 if self.Theme[i] then
                     v:SetColor(self.Theme[i], 1);
@@ -153,12 +155,12 @@ function library.New(options)
 				end
             end
         end
-		function window_f:ResetTheme()
+		function window_f:resetTheme()
             for i,o in next, self.Theme do
                 self.Theme[i] = self.DefaultTheme[i] or self.Theme[i] or nil
             end
     
-            self:UpdateTheme()
+            self:updateTheme()
         end
 	end
 	-------------------------------
@@ -170,10 +172,11 @@ function library.New(options)
 		BorderColor3 = window_f.Theme.Dark_Border,
 		BorderSizePixel = 2,
 		Position = util.v2_u2(window_i.Position),
-		Size = U2(0, 220, 0, 350),
+		Size = util.v2_u2(window_i.Size),
+		ClipsDescendants = true,
 		ZIndex = 0
 	})
-	window_f:NewThemeUpdater(Window, {
+	window_f:newThemeUpdater(Window, {
 		BackgroundColor3 = "Dark_Background",
 		BorderColor3 = "Dark_Border"
 	})
@@ -196,9 +199,10 @@ function library.New(options)
 		CanvasSize = U2(1, 0, 0, 0),
 		ScrollBarThickness = 0,
 		ScrollingDirection = Enum.ScrollingDirection.X,
+		ClipsDescendants = false,
 		ZIndex = 0
 	})
-	window_f:NewThemeUpdater(PageSelector, {
+	window_f:newThemeUpdater(PageSelector, {
 		BackgroundColor3 = "Light_Background",
 		BorderColor3 = "Dark_Border"
 	})
@@ -218,7 +222,7 @@ function library.New(options)
 		Size = U2(1, 0, 0, 1),
 		ZIndex = 1
 	})
-	window_f:NewThemeUpdater(TopBar, {
+	window_f:newThemeUpdater(TopBar, {
 		BackgroundColor3 = "Accent"
 	})
 
@@ -260,10 +264,10 @@ function library.New(options)
 	end
 	window_f:hideAllPages()
 
-	function window_f:GetPosition(position)
+	function window_f:getPosition(position)
 		return V2(Window.AbsolutePosition.X, Window.AbsolutePosition.Y);
 	end
-	function window_f:SetPosition(position)
+	function window_f:setPosition(position)
 		Window.Position = U2(0, position.X, 0, position.Y)
 		window_i.Position_Callback(position)
 	end
@@ -412,7 +416,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = 20
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -431,7 +435,7 @@ function library.New(options)
 				TextSize = 13,
 				ZIndex = 20
 			})
-			window_f:NewThemeUpdater(Input, {
+			window_f:newThemeUpdater(Input, {
 				BackgroundColor3 = "Light_Background",
 				TextColor3 = "Light_Text",
 				PlaceholderColor3 = "Dark_Text"
@@ -479,7 +483,7 @@ function library.New(options)
 				Size = U2(0, 146, 0, 230),
 				ZIndex = 20
 			})
-			window_f:NewThemeUpdater(self.PickerWin, {
+			window_f:newThemeUpdater(self.PickerWin, {
 				BackgroundColor3 = "Dark_Background",
 				BorderColor3 = "Dark_Border"
 			})
@@ -508,7 +512,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
 			})
-			window_f:NewThemeUpdater(self.TopBarTitle, {
+			window_f:newThemeUpdater(self.TopBarTitle, {
 				TextColor3 = "Light_Text"
 			})
 
@@ -522,7 +526,7 @@ function library.New(options)
 				Size = U2(1, 0, 0, 1),
 				ZIndex = 20
 			})
-			window_f:NewThemeUpdater(self.Bar, {
+			window_f:newThemeUpdater(self.Bar, {
 				BackgroundColor3 = "Accent"
 			})
 			
@@ -853,7 +857,7 @@ function library.New(options)
 	--[[-----------------------------------
                 Page Constructor
     -----------------------------------]]--
-	function window_f.NewPage(options)
+	function window_f.newPage(options)
 		local page_i = util.merge(library.def_page, options)
 		local page_f = {}
 
@@ -897,7 +901,7 @@ function library.New(options)
 			TextSize = 13,
 			ZIndex = 2
 		})
-		window_f:NewThemeUpdater(PageButton, {
+		window_f:newThemeUpdater(PageButton, {
 			BackgroundColor3 = "Dark_Background",
 			TextColor3 = "Light_Text"
 		})
@@ -917,7 +921,7 @@ function library.New(options)
 			Visible = false,
 			ZIndex = 2
 		})
-		window_f:NewThemeUpdater(Bar, {
+		window_f:newThemeUpdater(Bar, {
 			BackgroundColor3 = "Accent"
 		})
 
@@ -946,7 +950,7 @@ function library.New(options)
 		-----------------------------------------]]--
 		
 		-- BUTTON Constructor - Options
-		function page_f:NewButton(options)
+		function page_f:newButton(options)
 			local button_i = util.merge(library.def_button, options)
 			local button_f = {}
 			--
@@ -974,7 +978,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -994,7 +998,7 @@ function library.New(options)
 				ZIndex = 2,
 				Visible = button_i.ShowKey
 			})
-			window_f:NewThemeUpdater(Bind, {
+			window_f:newThemeUpdater(Bind, {
 				TextColor3 = "Dark_Text"
 			})
 
@@ -1110,7 +1114,7 @@ function library.New(options)
 		end
 
 		-- TOGGLE Constructor - Options
-		function page_f:NewToggle(options)
+		function page_f:newToggle(options)
 			local toggle_i = util.merge(library.def_toggle, options)
 			local toggle_f = {}
 			--
@@ -1132,7 +1136,7 @@ function library.New(options)
 				Size = U2(0, 9, 0, 6),
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(ON, {
+			window_f:newThemeUpdater(ON, {
 				BackgroundColor3 = "Accent"
 			})
 			
@@ -1170,7 +1174,7 @@ function library.New(options)
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -1205,7 +1209,7 @@ function library.New(options)
 				ZIndex = 2,
 				Visible = toggle_i.ShowKey
 			})
-			window_f:NewThemeUpdater(Bind, {
+			window_f:newThemeUpdater(Bind, {
 				TextColor3 = "Dark_Text"
 			})
 			
@@ -1321,7 +1325,7 @@ function library.New(options)
 		end
 
 		-- SLIDER Constructor - Options
-		function page_f:NewSlider(options)
+		function page_f:newSlider(options)
 			local slider_i = util.merge(library.def_slider, options)
 			local slider_f = {}
 			--
@@ -1358,7 +1362,7 @@ function library.New(options)
 				Size = U2(0, 100, 1, 0),
 				ZIndex = 3
 			})
-			window_f:NewThemeUpdater(Fill, {
+			window_f:newThemeUpdater(Fill, {
 				BackgroundColor3 = "Accent"
 			})
 			
@@ -1384,7 +1388,7 @@ function library.New(options)
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -1405,7 +1409,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Right,
 				ZIndex = 3
 			})
-			window_f:NewThemeUpdater(Value, {
+			window_f:newThemeUpdater(Value, {
 				TextColor3 = "Dark_Text"
 			})
 			--
@@ -1535,7 +1539,7 @@ function library.New(options)
 		end
 
 		-- PICKER Constructor - Options
-		function page_f:NewPicker(options)
+		function page_f:newPicker(options)
 			local picker_i = util.merge(library.def_picker, options)
 			local picker_f = {}
 			--
@@ -1563,7 +1567,7 @@ function library.New(options)
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -1660,7 +1664,7 @@ function library.New(options)
 		end
 
 		-- DROPDOWN Constructor - Options
-		function page_f:NewDropdown(options)
+		function page_f:newDropdown(options)
 			local dropdown_i = util.merge(library.def_dropdown, options)
 			local dropdown_f = {}
 			--
@@ -1695,7 +1699,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -1714,7 +1718,7 @@ function library.New(options)
 				TextSize = 14,
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(Bar, {
+			window_f:newThemeUpdater(Bar, {
 				BackgroundColor3 = "Light_Background"
 			})
 			
@@ -1732,7 +1736,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = 3
 			})
-			window_f:NewThemeUpdater(Current, {
+			window_f:newThemeUpdater(Current, {
 				TextColor3 = function()
 					return Current.Text == "NONE" and "Dark_Text" or "Light_Text"
 				end
@@ -1807,7 +1811,7 @@ function library.New(options)
 					TextSize = 14,
 					ZIndex = 10
 				})
-				window_f:NewThemeUpdater(Option, {
+				window_f:newThemeUpdater(Option, {
 					BackgroundColor3 = "Light_Background"
 				})
 				
@@ -1825,7 +1829,7 @@ function library.New(options)
 					TextXAlignment = Enum.TextXAlignment.Left,
 					ZIndex = 10
 				})
-				window_f:NewThemeUpdater(Option_Text, {
+				window_f:newThemeUpdater(Option_Text, {
 					TextColor3 = "Light_Text"
 				})
 
@@ -1851,7 +1855,7 @@ function library.New(options)
 		end
 
 		-- CHIPSET
-		function page_f:NewChipset(options)
+		function page_f:newChipset(options)
 			local chipset_i = util.merge(library.def_chipset, options)
 			local chipset_f = {}
 			--
@@ -1886,7 +1890,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Bottom
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 			
@@ -1905,7 +1909,7 @@ function library.New(options)
 				TextSize = 14,
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(Bar, {
+			window_f:newThemeUpdater(Bar, {
 				BackgroundColor3 = "Light_Background"
 			})
 			
@@ -1923,7 +1927,7 @@ function library.New(options)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = 3
 			})
-			window_f:NewThemeUpdater(Current, {
+			window_f:newThemeUpdater(Current, {
 				TextColor3 = function()
 					return Current.Text == "NONE" and "Dark_Text" or "Light_Text"
 				end
@@ -1995,7 +1999,7 @@ function library.New(options)
 					TextSize = 14,
 					ZIndex = 10
 				})
-				window_f:NewThemeUpdater(Option, {
+				window_f:newThemeUpdater(Option, {
 					BackgroundColor3 = "Light_Background"
 				})
 				
@@ -2013,7 +2017,7 @@ function library.New(options)
 					TextXAlignment = Enum.TextXAlignment.Left,
 					ZIndex = 10
 				})
-				window_f:NewThemeUpdater(Option_Text, {
+				window_f:newThemeUpdater(Option_Text, {
 					TextColor3 = function()
 						return chipset_i.Options[o] and "Accent" or "Light_Text"
 					end
@@ -2040,7 +2044,7 @@ function library.New(options)
 		end
 
 		-- Label
-		function page_f:NewLabel(options)
+		function page_f:newLabel(options)
 			local label_i = util.merge(library.def_label, options)
 			local label_f = {}
 			--
@@ -2068,7 +2072,7 @@ function library.New(options)
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				ZIndex = 2
 			})
-			window_f:NewThemeUpdater(Text, {
+			window_f:newThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
 
@@ -2086,7 +2090,7 @@ function library.New(options)
 		end
 
 		-- Separator
-		function page_f:NewSeparator()
+		function page_f:newSeparator()
 			local Separator = util.create('Frame', {
 				Name = "Separator",
 				Parent = Page,
@@ -2108,7 +2112,7 @@ function library.New(options)
 		return page_f
 	end
 
-	function window_f:FormatThemeToRawText(overrides)
+	function window_f:formatThemeToRawText(overrides)
         local formatted = util.clone(overrides)
         for i,v in next, overrides do
             if typeof(v) == "Color3" then
@@ -2117,7 +2121,7 @@ function library.New(options)
         end
         return formatted;
     end
-    function window_f:GetThemeFromRawText(overrides)
+    function window_f:getThemeFromRawText(overrides)
         local formatted = util.clone(overrides)
         for i,v in next, overrides do
             if typeof(v) == "table" and tonumber(v.R) and tonumber(v.G) and tonumber(v.B) then
@@ -2126,7 +2130,7 @@ function library.New(options)
         end
         return formatted;
     end
-    function window_f:GetThemeFromFile(filename, folder, extension)
+    function window_f:getThemeFromFile(filename, folder, extension)
         local path = folder .. "/" .. filename .. extension;
 
         if (not isfile(path)) then
@@ -2139,10 +2143,10 @@ function library.New(options)
         end
 
         local Result = readfile(path) or "{}";
-        return self:GetThemeFromRawText(HttpService:JSONDecode(Result)) or {}, true;
+        return self:getThemeFromRawText(HttpService:JSONDecode(Result)) or {}, true;
     end
 
-	function window_f:NewThemeControlPage(info)
+	function window_f:newThemeControlPage(info)
 		info = info or {}
         info.Folder = info.Folder or "CSThemes"
         info.Default = info.Default or "CSTheme"
@@ -2174,68 +2178,68 @@ function library.New(options)
 
 		--
 
-        local overrides, success = self:GetThemeFromFile(info.Default, info.Folder, info.Extension);
-        self:OverrideTheme(overrides);
-        self:UpdateTheme();
+        local overrides, success = self:getThemeFromFile(info.Default, info.Folder, info.Extension);
+        self:overrideTheme(overrides);
+        self:updateTheme();
 
 		--
 
-		local ThemePage = self.NewPage({Text = "Theme"})
+		local ThemePage = self.newPage({Text = "Theme"})
 
-		ThemePage:NewLabel({Text = "COLORS"});
+		ThemePage:newLabel({Text = "COLORS"});
 
 		self.Theme_Pickers = {}
 
-		self.Theme_Pickers["Accent"] = ThemePage:NewPicker({Text="Accent", Default = {overrides.Accent or self.Theme.Accent, 1},
+		self.Theme_Pickers["Accent"] = ThemePage:newPicker({Text="Accent", Default = {overrides.Accent or self.Theme.Accent, 1},
 			Callback = function(c, a)
 				overrides.Accent = c
 			end
 		})
 
-		self.Theme_Pickers["Dark_Background"] = ThemePage:NewPicker({Text="Dark Background", Default = {overrides.Dark_Background or self.Theme.Dark_Background, 1},
+		self.Theme_Pickers["Dark_Background"] = ThemePage:newPicker({Text="Dark Background", Default = {overrides.Dark_Background or self.Theme.Dark_Background, 1},
 			Callback = function(c, a)
 				overrides.Dark_Background = c
 			end
 		})
 
-        self.Theme_Pickers["Dark_Border"] = ThemePage:NewPicker({Text="Dark Border", Default = {overrides.Dark_Border or self.Theme.Dark_Border, 1},
+        self.Theme_Pickers["Dark_Border"] = ThemePage:newPicker({Text="Dark Border", Default = {overrides.Dark_Border or self.Theme.Dark_Border, 1},
 			Callback = function(c, a)
 				overrides.Dark_Border = c
 			end
 		})
 
-		self.Theme_Pickers["Light_Background"] = ThemePage:NewPicker({Text="Light Background", Default = {overrides.Light_Background or self.Theme.Light_Background, 1},
+		self.Theme_Pickers["Light_Background"] = ThemePage:newPicker({Text="Light Background", Default = {overrides.Light_Background or self.Theme.Light_Background, 1},
 			Callback = function(c, a)
 				overrides.Light_Background = c
 			end
 		})
 
-        self.Theme_Pickers["Light_Border"] = ThemePage:NewPicker({Text="Light Border", Default = {overrides.Light_Border or self.Theme.Light_Border, 1},
+        self.Theme_Pickers["Light_Border"] = ThemePage:newPicker({Text="Light Border", Default = {overrides.Light_Border or self.Theme.Light_Border, 1},
 			Callback = function(c, a)
 				overrides.Light_Border = c
 			end
 		})
 
-		self.Theme_Pickers["Light_Text"] = ThemePage:NewPicker({Text="Light Text", Default = {overrides.Light_Text or self.Theme.Light_Text, 1},
+		self.Theme_Pickers["Light_Text"] = ThemePage:newPicker({Text="Light Text", Default = {overrides.Light_Text or self.Theme.Light_Text, 1},
 			Callback = function(c, a)
 				overrides.Light_Text = c
 			end
 		})
 
-		self.Theme_Pickers["Dark_Text"] = ThemePage:NewPicker({Text="Dark Text", Default = {overrides.Dark_Text or self.Theme.Dark_Text, 1},
+		self.Theme_Pickers["Dark_Text"] = ThemePage:newPicker({Text="Dark Text", Default = {overrides.Dark_Text or self.Theme.Dark_Text, 1},
 			Callback = function(c, a)
 				overrides.Dark_Text = c
 			end
 		})
 
-		ThemePage:NewSeparator();
+		ThemePage:newSeparator();
 
-        ThemePage:NewButton({
+        ThemePage:newButton({
             Text = "Save Theme",
             Callback = function()
-                self:OverrideTheme(overrides);
-                self:UpdateTheme();
-                writefile(info.Folder .. "/" .. info.Default .. info.Extension, HttpService:JSONEncode(self:FormatThemeToRawText(overrides)) or "{}")
+                self:overrideTheme(overrides);
+                self:updateTheme();
+                writefile(info.Folder .. "/" .. info.Default .. info.Extension, HttpService:JSONEncode(self:formatThemeToRawText(overrides)) or "{}")
             end
         })
 
@@ -2250,7 +2254,7 @@ end
 --[[---------------------
 		 Export
 ---------------------]]--
-if true then
+if false then
 	return library
 end
 
@@ -2258,34 +2262,35 @@ end
 --[[---------------------
 		 Example
 ---------------------]]--
-if false then
+if true then
     loadstring(string.rep("warn();", 4))()
 
-    local W = library.New({
+    local W = library.new({
         Text = "Window", 
+		Size = V2(300,400),
         Position = V2(200, 200),
         Position_Callback = function(v)
             print(tostring(v))
         end
     })
-    local P = W.NewPage({Text="ESP"})
-    local P = W.NewPage({Text="Aimbot"})
+    local P = W.newPage({Text="ESP"})
+    local P = W.newPage({Text="Aimbot"})
 	
-    P:NewButton({
+    P:newButton({
         Text = "Close", 
         Key = Enum.KeyCode.Delete,
         Callback = function() print("bind pressed"); W:Close() end,
         KeyCallBack = function(new) print("set bind to: " .. tostring(new)) end
     })
 
-	P:NewButton({
+	P:newButton({
         Text = "Toggle Gui", 
         Key = Enum.KeyCode.End,
         Callback = function() W:Toggle() end,
         KeyCallBack = function(new) print("set toggle bind to: " .. tostring(new)) end
     })
 
-    P:NewToggle({
+    P:newToggle({
         Text = "Aimbot", 
         State = true,
         Key = Enum.KeyCode.B,
@@ -2293,7 +2298,7 @@ if false then
         KeyCallBack = function(new) print("set bind to: " .. tostring(new)) end
     })
 
-	P:NewToggle({
+	P:newToggle({
         Text = "Without Keybind", 
         State = false,
         Key = false,
@@ -2301,28 +2306,28 @@ if false then
         Callback = function(state) print("now: " .. tostring(state)) end,
     })
 
-    P:NewSlider({Text="Slide", Default = 1, Min = 0, Max = 10, Decimals = 4, Suffix = "px",
+    P:newSlider({Text="Slide", Default = 1, Min = 0, Max = 10, Decimals = 4, Suffix = "px",
         Callback = function(v)
             warn(v)
         end
     })
 
-    P:NewPicker({Text="FOV Color", Default = {RGB(0, 0, 255), 1},
+    P:newPicker({Text="FOV Color", Default = {RGB(0, 0, 255), 1},
         Callback = function(c, a)
             warn(tostring(c), tostring(a))
         end
     })
-    P:NewPicker({Text="BOX Color", Default = {RGB(0, 0, 0), 1},
+    P:newPicker({Text="BOX Color", Default = {RGB(0, 0, 0), 1},
         Callback = function(c, a)
             warn(tostring(c), tostring(a))
         end
     })
-    P:NewDropdown({Text="BOX Location", Options = {"Head", "Torso", "Feet"}, Default = 1,
+    P:newDropdown({Text="BOX Location", Options = {"Head", "Torso", "Feet"}, Default = 1,
         Callback = function(o)
             warn(tostring(o))
         end
     })
-    P:NewChipset({Text="BOX Location", Options = {["Head"] = true, ["Torso"] = false, ["Feet"] = true},
+    P:newChipset({Text="BOX Location", Options = {["Head"] = true, ["Torso"] = false, ["Feet"] = true},
         Callback = function(options)
             warn()
             for i,v in pairs(options) do
@@ -2331,8 +2336,8 @@ if false then
         end
     })
 
-    P:NewSeparator()
-    P:NewLabel({Text = "Label"})
+    P:newSeparator()
+    P:newLabel({Text = "Label"})
 
-    W:NewThemeControlPage()
+    W:newThemeControlPage()
 end
