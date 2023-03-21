@@ -21,14 +21,16 @@ do -- Default Creation Params
 	}
 	library.def_button = {
 		Text = "Button",
-		Key = false,
+		ShowKey = true,
+		Key = nil,
 		Callback = function()end,
 		KeyCallBack = function(newkey)end
 	}
 	library.def_toggle = {
 		Text = "Toggle",
 		Default = false,
-		Key = false,
+		ShowKey = true,
+		Key = nil,
 		Callback = function(state)end,
 		KeyCallBack = function(newkey)end
 	}
@@ -989,7 +991,8 @@ function library.New(options)
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
-				ZIndex = 2
+				ZIndex = 2,
+				Visible = button_i.ShowKey
 			})
 			window_f:NewThemeUpdater(Bind, {
 				TextColor3 = "Dark_Text"
@@ -1010,7 +1013,6 @@ function library.New(options)
 				ZIndex = 3
 			})
 			
-			
 			local BindDetector = util.create('TextButton', {
 				Name = "BindDetector",
 				Parent = Button,
@@ -1023,7 +1025,8 @@ function library.New(options)
 				Style = Enum.ButtonStyle.Custom,
 				Text = "",
 				TextSize = 14,
-				ZIndex = 3
+				ZIndex = 3,
+				Visible = button_i.ShowKey
 			})
 
 			function button_f:ScaleText()
@@ -1199,7 +1202,8 @@ function library.New(options)
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
-				ZIndex = 2
+				ZIndex = 2,
+				Visible = toggle_i.ShowKey
 			})
 			window_f:NewThemeUpdater(Bind, {
 				TextColor3 = "Dark_Text"
@@ -1217,7 +1221,8 @@ function library.New(options)
 				Style = Enum.ButtonStyle.Custom,
 				Text = "",
 				TextSize = 14,
-				ZIndex = 3
+				ZIndex = 3,
+				Visible = toggle_i.ShowKey
 			})
 
 			function toggle_f:ScaleText()
@@ -2268,7 +2273,7 @@ if false then
 	
     P:NewButton({
         Text = "Close", 
-        Key = Enum.KeyCode.X,
+        Key = Enum.KeyCode.Delete,
         Callback = function() print("bind pressed"); W:Close() end,
         KeyCallBack = function(new) print("set bind to: " .. tostring(new)) end
     })
@@ -2286,6 +2291,14 @@ if false then
         Key = Enum.KeyCode.B,
         Callback = function(state) print("now: " .. tostring(state)) end,
         KeyCallBack = function(new) print("set bind to: " .. tostring(new)) end
+    })
+
+	P:NewToggle({
+        Text = "Without Keybind", 
+        State = false,
+        Key = false,
+		ShowKey = false,
+        Callback = function(state) print("now: " .. tostring(state)) end,
     })
 
     P:NewSlider({Text="Slide", Default = 1, Min = 0, Max = 10, Decimals = 4, Suffix = "px",
