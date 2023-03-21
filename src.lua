@@ -2254,7 +2254,7 @@ end
 --[[---------------------
 		 Export
 ---------------------]]--
-if false then
+if true then
 	return library
 end
 
@@ -2262,7 +2262,7 @@ end
 --[[---------------------
 		 Example
 ---------------------]]--
-if true then
+if false then
     loadstring(string.rep("warn();", 4))()
 
     local W = library.new({
