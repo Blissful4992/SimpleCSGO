@@ -5,15 +5,6 @@ local library = {}
 -----------------------------------]]--
 local util = loadstring(game:HttpGet("https://raw.githubusercontent.com/Blissful4992/Miscellaneous/main/util.lua"))()
 
---
-library.UI = util.create('ScreenGui', {
-	Name = "UI",
-	Parent = CoreGui,
-	ResetOnSpawn = false,
-	ZIndexBehavior = Enum.ZIndexBehavior.Global
-})
-util.protectGui(library.UI)
-
 --[[-----------------------------------
 			Default Options
 -----------------------------------]]--
@@ -74,13 +65,16 @@ end
 library.diagonalSizeId     = 'rbxassetid://9063724353'
 library.horizontalSizeId   = 'rbxassetid://8943647369'
 
---[[-------------------------
-			Z INDEX
-- Main Window: 0
-	- Text: 1
-	- 
+local GTHM = Enum.Font.Gotham
+local UIT = Enum.UserInputType
+local MB1 = UIT.MouseButton1
+local MB2 = UIT.MouseButton2
+local KBD = UIT.Keyboard
+local BSP = Enum.KeyCode.Backspace
+local DLT = Enum.KeyCode.Delete
 
--------------------------]]--
+local EDO = Enum.EasingDirection.Out
+local ESS = Enum.EasingStyle.Sine
 
 --[[---------------------------
 			Library
@@ -88,6 +82,14 @@ library.horizontalSizeId   = 'rbxassetid://8943647369'
 function library.New(options)
 	local window_i = util.merge(library.def_window, options)
 	local window_f = {}
+
+	local UI = util.create('ScreenGui', {
+		Name = "UI",
+		Parent = CoreGui,
+		ResetOnSpawn = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Global
+	})
+	util.protectGui(UI)
 
 	--[[---------------------------
 			  Connections
@@ -125,13 +127,22 @@ function library.New(options)
 
             Accent = RGB(205, 0, 255)
         }
-		window_f.Theme = util.merge(window_f.DefaultTheme, window_i.Theme_Overrides)
-		window_f.ThemeUpdaters = {}
+		window_f.Theme = window_f.DefaultTheme;
+		window_f.ThemeUpdaters = {};
 
+		function window_f:OverrideTheme(overrides)
+            self.Theme = util.merge(self.Theme, overrides)
+        end
 		function window_f:NewThemeUpdater(element, properties)
 			self.ThemeUpdaters[element] = properties
         end
 		function window_f:UpdateTheme()
+			for i,v in next, self.Theme_Pickers or {} do
+                if self.Theme[i] then
+                    v:SetColor(self.Theme[i], 1);
+                end
+            end
+
             for element, properties in next, self.ThemeUpdaters do
 				if not element then continue end
 
@@ -152,7 +163,7 @@ function library.New(options)
 
 	local Window = util.create('Frame', {
 		Name = window_i.Text,
-		Parent = library.UI,
+		Parent = UI,
 		BackgroundColor3 = window_f.Theme.Dark_Background,
 		BorderColor3 = window_f.Theme.Dark_Border,
 		BorderSizePixel = 2,
@@ -215,13 +226,13 @@ function library.New(options)
 	window_f.Toggled = true
 	function window_f:Toggle()
 		self.Toggled = not self.Toggled
-		library.UI.Enabled = self.Toggled
+		UI.Enabled = self.Toggled
 	end
 	function window_f:Close()
 		for _,c in next, self.Connections do
 			c:Disconnect()
 		end
-		library.UI:Destroy()
+		UI:Destroy()
 		self.cursor.cursor:Destroy()
 	end
 	function window_f:hideAllPages(MUTEX)
@@ -321,7 +332,7 @@ function library.New(options)
 		--
 		window_f.cursor.cursor = util.create("ImageLabel", {
 			Name = "Cursor",
-			Parent = library.UI,
+			Parent = UI,
 			Size = U2(0, 64, 0, 64),
 			ZIndex = 1000000,
 			Visible = false,
@@ -458,7 +469,7 @@ function library.New(options)
 		function picker_factory:createUI(Name, Current, Callback)
 			self.PickerWin = util.create('Frame', {
 				Name = Name,
-				Parent = library.UI,
+				Parent = UI,
 				BackgroundColor3 = window_f.Theme.Dark_Background,
 				BorderColor3 = window_f.Theme.Dark_Border,
 				BorderSizePixel = 2,
@@ -812,6 +823,14 @@ function library.New(options)
 	
 				self:updateCurrent(c, a)
 			end
+			--
+			function self:Close()
+				self.PickerWin:Destroy()
+
+				for _,connection in next, self.Connections or {} do
+					connection:Disconnect()
+				end
+			end
 		end
 		
 		function picker_factory:new(Name, Current, Callback)
@@ -832,7 +851,7 @@ function library.New(options)
 	--[[-----------------------------------
                 Page Constructor
     -----------------------------------]]--
-	function window_f:NewPage(options)
+	function window_f.NewPage(options)
 		local page_i = util.merge(library.def_page, options)
 		local page_f = {}
 
@@ -877,6 +896,7 @@ function library.New(options)
 			ZIndex = 2
 		})
 		window_f:NewThemeUpdater(PageButton, {
+			BackgroundColor3 = "Dark_Background",
 			TextColor3 = "Light_Text"
 		})
 
@@ -1578,15 +1598,8 @@ function library.New(options)
 			window_f:addConnection("MouseButton1Click", Detector, function()
 				if Toggled then
 					if Picker and Picker.PickerWin then
-						Picker.PickerWin:Destroy()
-						
-						if Picker.Connections then
-							for _,connection in next, Picker.Connections do
-								connection:Disconnect()
-							end
-						end
-
-						Picker = nil
+						Picker:Close()
+                        Picker = nil
 					end
 				else
 					local r, g, b = util.c3_rgb(Detector.BackgroundColor3)
@@ -1618,6 +1631,18 @@ function library.New(options)
 				Toggled = not Toggled
 			end)
 
+			function picker_f:GetColor()
+				return Detector.BackgroundColor3
+			end
+			function picker_f:SetColor(col, a)
+				if Picker then
+					Picker:Close();
+					Picker = nil;
+				end
+				
+				Detector.BackgroundColor3 = col;
+				Detector.BackgroundTransparency = util.a_t(a);
+			end
 			function picker_f:GetText()
 				return Text.Text
 			end
@@ -1668,7 +1693,6 @@ function library.New(options)
 			window_f:NewThemeUpdater(Text, {
 				TextColor3 = "Light_Text"
 			})
-			
 			
 			local Bar = util.create('TextButton', {
 				Name = "Bar",
@@ -2079,57 +2103,136 @@ function library.New(options)
 		return page_f
 	end
 
-	function window_f:NewThemeControlPage()
-		local ThemePage = self:NewPage({Text="Theme"})
+	function window_f:FormatThemeToRawText(overrides)
+        local formatted = util.clone(overrides)
+        for i,v in next, overrides do
+            if typeof(v) == "Color3" then
+                formatted[i] = {R=ROUND(v.R*255), G=ROUND(v.G*255), B=ROUND(v.B*255)};
+            end
+        end
+        return formatted;
+    end
+    function window_f:GetThemeFromRawText(overrides)
+        local formatted = util.clone(overrides)
+        for i,v in next, overrides do
+            if typeof(v) == "table" and tonumber(v.R) and tonumber(v.G) and tonumber(v.B) then
+                formatted[i] = RGB(v.R, v.G, v.B)
+            end
+        end
+        return formatted;
+    end
+    function window_f:GetThemeFromFile(filename, folder, extension)
+        local path = folder .. "/" .. filename .. extension;
 
-		ThemePage:NewButton({
-			Text = "Update Theme", 
-			Callback = function()
-				self:UpdateTheme()
-			end
-		})
+        if (not isfile(path)) then
+            local validThemes = listfiles(folder);
+            for i, theme in next, validThemes do
+                local path = theme:split("\\");
+                validThemes[i] = path[#path]:split(".")[1];
+            end
+            return {}, false;
+        end
 
-		ThemePage:NewPicker({Text="Accent", Default = {self.Theme.Accent, 1},
+        local Result = readfile(path) or "{}";
+        return self:GetThemeFromRawText(HttpService:JSONDecode(Result)) or {}, true;
+    end
+
+	function window_f:NewThemeControlPage(info)
+		info = info or {}
+        info.Folder = info.Folder or "CSThemes"
+        info.Default = info.Default or "CSTheme"
+        info.Extension = info.Extension or ".dat"
+
+		if (self.ThemePageCreated) then
+            return print("Theme Page Already Created")
+        end
+        self.ThemePageCreated = true;
+
+		--
+
+		-- Dark_Background = RGB(10, 18, 38),
+		-- Dark_Border = RGB(10, 18, 38),
+		
+		-- Light_Background = RGB(14, 31, 66),
+		-- Light_Border = RGB(14, 31, 66),
+	
+		-- Light_Text = RGB(230, 230, 230),
+		-- Dark_Text = RGB(178, 178, 178),
+
+		-- Accent = RGB(205, 0, 255)
+
+		--
+
+		if not isfolder(info.Folder) then
+            makefolder(info.Folder)
+        end
+
+		--
+
+        local overrides, success = self:GetThemeFromFile(info.Default, info.Folder, info.Extension);
+        self:OverrideTheme(overrides);
+        self:UpdateTheme();
+
+		--
+
+		local ThemePage = self.NewPage({Text = "Theme"})
+
+		ThemePage:NewLabel({Text = "COLORS"});
+
+		self.Theme_Pickers = {}
+
+		self.Theme_Pickers["Accent"] = ThemePage:NewPicker({Text="Accent", Default = {overrides.Accent or self.Theme.Accent, 1},
 			Callback = function(c, a)
-				self.Theme.Accent = c
+				overrides.Accent = c
 			end
 		})
 
-		ThemePage:NewPicker({Text="Dark Background", Default = {self.Theme.Dark_Background, 1},
+		self.Theme_Pickers["Dark_Background"] = ThemePage:NewPicker({Text="Dark Background", Default = {overrides.Dark_Background or self.Theme.Dark_Background, 1},
 			Callback = function(c, a)
-				self.Theme.Dark_Background = c
+				overrides.Dark_Background = c
 			end
 		})
 
-		ThemePage:NewPicker({Text="Dark Border", Default = {self.Theme.Dark_Border, 1},
+        self.Theme_Pickers["Dark_Border"] = ThemePage:NewPicker({Text="Dark Border", Default = {overrides.Dark_Border or self.Theme.Dark_Border, 1},
 			Callback = function(c, a)
-				self.Theme.Dark_Border = c
+				overrides.Dark_Border = c
 			end
 		})
 
-		ThemePage:NewPicker({Text="Light Background", Default = {self.Theme.Light_Background, 1},
+		self.Theme_Pickers["Light_Background"] = ThemePage:NewPicker({Text="Light Background", Default = {overrides.Light_Background or self.Theme.Light_Background, 1},
 			Callback = function(c, a)
-				self.Theme.Light_Background = c
+				overrides.Light_Background = c
 			end
 		})
 
-		ThemePage:NewPicker({Text="Light Border", Default = {self.Theme.Light_Border, 1},
+        self.Theme_Pickers["Light_Border"] = ThemePage:NewPicker({Text="Light Border", Default = {overrides.Light_Border or self.Theme.Light_Border, 1},
 			Callback = function(c, a)
-				self.Theme.Light_Border = c
+				overrides.Light_Border = c
 			end
 		})
 
-		ThemePage:NewPicker({Text="Light Text", Default = {self.Theme.Light_Text, 1},
+		self.Theme_Pickers["Light_Text"] = ThemePage:NewPicker({Text="Light Text", Default = {overrides.Light_Text or self.Theme.Light_Text, 1},
 			Callback = function(c, a)
-				self.Theme.Light_Text = c
+				overrides.Light_Text = c
 			end
 		})
 
-		ThemePage:NewPicker({Text="Dark Text", Default = {self.Theme.Dark_Text, 1},
+		self.Theme_Pickers["Dark_Text"] = ThemePage:NewPicker({Text="Dark Text", Default = {overrides.Dark_Text or self.Theme.Dark_Text, 1},
 			Callback = function(c, a)
-				self.Theme.Dark_Text = c
+				overrides.Dark_Text = c
 			end
 		})
+
+		ThemePage:NewSeparator();
+
+        ThemePage:NewButton({
+            Text = "Save Theme",
+            Callback = function()
+                self:OverrideTheme(overrides);
+                self:UpdateTheme();
+                writefile(info.Folder .. "/" .. info.Default .. info.Extension, HttpService:JSONEncode(self:FormatThemeToRawText(overrides)) or "{}")
+            end
+        })
 
 		return ThemePage
 	end
@@ -2160,8 +2263,8 @@ if false then
             print(tostring(v))
         end
     })
-    local P = W:NewPage({Text="ESP"})
-    local P = W:NewPage({Text="Aimbot"})
+    local P = W.NewPage({Text="ESP"})
+    local P = W.NewPage({Text="Aimbot"})
 	
     P:NewButton({
         Text = "Close", 
