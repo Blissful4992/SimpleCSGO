@@ -1282,7 +1282,7 @@ function library.new(options)
 			end
 			--
 
-			toggle_f.State = toggle_i.State
+			toggle_f.State = toggle_i.Default or false
 
 			function toggle_f:updateState()
 				if self.State then
