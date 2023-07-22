@@ -1862,6 +1862,8 @@ function library.new(options)
 		-- CHIPSET
 		function page_f:newChipset(options)
 			local chipset_i = util.merge(library.def_chipset, options)
+			chipset_i.nb_options = 0;
+
 			local chipset_f = {}
 			--
 
@@ -1884,7 +1886,7 @@ function library.new(options)
 				Name = "Text",
 				Parent = Sub,
 				BackgroundTransparency = 1,
-				Position = U2(0, 0, 0.5, -1),
+				Position = U2(0, 0, 0, 9),
 				Size = U2(1, 0, 0, 6),
 				ZIndex = 2,
 				Font = Enum.Font.Code,
@@ -1955,6 +1957,12 @@ function library.new(options)
 
 			window_f:addConnection("MouseButton1Click", Bar, function()
 				Container.Visible = not Container.Visible
+
+				if Container.Visible then
+					Chipset.Size = U2(1, 0, 0, 38 + (chipset_i.nb_options + 1) * 14);
+				else
+					Chipset.Size = U2(1, 0, 0, 38);
+				end
 			end)
 
 			window_f:addRawConnection(UIS.InputBegan:Connect(function(input)
@@ -1989,6 +1997,8 @@ function library.new(options)
 			updateOptionString(false)
 
 			for o,v in next, chipset_i.Options do
+				chipset_i.nb_options = chipset_i.nb_options + 1;
+
 				local Option = util.create('TextButton', {
 					Name = "Option",
 					Parent = Container,
