@@ -1666,6 +1666,7 @@ function library.new(options)
 		-- DROPDOWN Constructor - Options
 		function page_f:newDropdown(options)
 			local dropdown_i = util.merge(library.def_dropdown, options)
+			dropdown_i.nb_options = 0;
 			local dropdown_f = {}
 			--
 
@@ -1688,7 +1689,7 @@ function library.new(options)
 				Name = "Text",
 				Parent = Sub,
 				BackgroundTransparency = 1,
-				Position = U2(0, 0, 0.5, -1),
+				Position = U2(0, 0, 0, 9),
 				Size = U2(1, 0, 0, 6),
 				ZIndex = 2,
 				Font = Enum.Font.Code,
@@ -1759,16 +1760,18 @@ function library.new(options)
 
 			local previous_option;
 			window_f:addConnection("MouseButton1Click", Bar, function()
-				Container.Visible = not Container.Visible
+				Container.Visible = not Container.Visible;
 
 				if (Container.Visible) then
 					previous_option = Current.Text
 
 					Current.Text = "..."
 					Current.TextColor3 = window_f.Theme.Dark_Text
+					Dropdown.Size = U2(1, 0, 0, 38 + (dropdown_i.nb_options + 1) * 14);
 				else
 					Current.Text = previous_option
 					Current.TextColor3 = previous_option ~= "NONE" and window_f.Theme.Light_Text or window_f.Theme.Dark_Text
+					Dropdown.Size = U2(1, 0, 0, 38);
 				end
 			end)
 
@@ -1796,6 +1799,8 @@ function library.new(options)
 			end))
 
 			for i,o in next, dropdown_i.Options do
+				dropdown_i.nb_options = dropdown_i.nb_options + 1;
+
 				local Option = util.create('TextButton', {
 					Name = "Option",
 					Parent = Container,
